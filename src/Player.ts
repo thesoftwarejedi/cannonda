@@ -29,7 +29,9 @@ export class Laser extends GameObject {
 }
 
 export class Player extends GameObject {
-    private jumpForce: number = -400;
+    private jumpForce: number = -500;
+    private jumpCount: number = 0;
+    private maxJumps: number = 2; // Allow double jump
     private speed: number = 200;
     private gravity: number = 1000;
     private isJumping: boolean = false;
@@ -53,13 +55,16 @@ export class Player extends GameObject {
             if (this.velocity.y > 0) {
                 this.velocity = new Vector2D(this.velocity.x, 0);
             }
+            // Reset jump count when on ground
+            this.jumpCount = 0;
         }
 
         // Handle jump input
-        if (input.isKeyDown(Keys.Up) && this.isOnGround) {
+        if (input.isKeyDown(Keys.Up) && (this.isOnGround || this.jumpCount < this.maxJumps)) {
             this.velocity = new Vector2D(this.velocity.x, this.jumpForce);
             this.isJumping = true;
             this.isOnGround = false;
+            this.jumpCount++;
         }
 
         // Handle movement input (since we're driving backwards, left/right are reversed)
@@ -68,10 +73,11 @@ export class Player extends GameObject {
         } else if (input.isKeyPressed(Keys.Left)) {
             this.velocity = new Vector2D(this.speed, this.velocity.y);
         } else {
-            this.velocity = new Vector2D(0, this.velocity.y);
+            // Apply friction horizontally
+            this.velocity = new Vector2D(this.velocity.x * 0.9, this.velocity.y);
         }
 
-        // Handle laser shooting
+        // Update laser cooldown
         if (this.laserCooldown > 0) {
             this.laserCooldown -= deltaTime;
         }
@@ -94,33 +100,67 @@ export class Player extends GameObject {
     }
 
     render(ctx: CanvasRenderingContext2D): void {
-        // Draw the dump truck
         ctx.save();
         
-        // Truck body
-        ctx.fillStyle = '#f39c12'; // Orange/yellow for dump truck
+        // Draw truck body
+        ctx.fillStyle = '#e74c3c'; // Red
         ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
         
-        // Truck bed (filled with rocks)
-        ctx.fillStyle = '#7f8c8d'; // Gray for rocks
-        ctx.fillRect(this.position.x + this.width * 0.3, this.position.y, this.width * 0.7, this.height * 0.7);
+        // Draw truck cabin
+        ctx.fillStyle = '#c0392b'; // Darker red
+        ctx.fillRect(
+            this.position.x + this.width * 0.6, 
+            this.position.y, 
+            this.width * 0.4, 
+            this.height * 0.7
+        );
         
-        // Truck cab
-        ctx.fillStyle = '#e74c3c'; // Red for cab
-        ctx.fillRect(this.position.x, this.position.y, this.width * 0.3, this.height * 0.7);
+        // Draw truck bed with rocks
+        ctx.fillStyle = '#7f8c8d'; // Gray
+        const rockHeight = Math.min(this.height * 0.4, (this.rocksInTruck / 30) * this.height * 0.4);
+        ctx.fillRect(
+            this.position.x, 
+            this.position.y + this.height * 0.2, 
+            this.width * 0.55, 
+            rockHeight
+        );
         
-        // Wheels
-        ctx.fillStyle = '#2c3e50'; // Dark blue for wheels
+        // Draw wheels
+        ctx.fillStyle = '#2c3e50';
         ctx.beginPath();
-        ctx.arc(this.position.x + this.width * 0.2, this.position.y + this.height, this.height * 0.2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(this.position.x + this.width * 0.8, this.position.y + this.height, this.height * 0.2, 0, Math.PI * 2);
+        ctx.arc(
+            this.position.x + this.width * 0.2, 
+            this.position.y + this.height, 
+            this.height * 0.2, 
+            0, 
+            Math.PI * 2
+        );
         ctx.fill();
         
-        // Back headlights for laser - moved to the right side of truck
-        ctx.fillStyle = '#f1c40f'; // Yellow for headlights
-        ctx.fillRect(this.position.x + this.width - 5, this.position.y + this.height * 0.5 - 5, 5, 10);
+        ctx.beginPath();
+        ctx.arc(
+            this.position.x + this.width * 0.8, 
+            this.position.y + this.height, 
+            this.height * 0.2, 
+            0, 
+            Math.PI * 2
+        );
+        ctx.fill();
+        
+        // Draw headlights at back of truck (since it drives backwards)
+        ctx.fillStyle = '#f1c40f'; // Yellow
+        ctx.fillRect(
+            this.position.x + this.width - 5, 
+            this.position.y + this.height * 0.3, 
+            5, 
+            this.height * 0.1
+        );
+        ctx.fillRect(
+            this.position.x + this.width - 5, 
+            this.position.y + this.height * 0.6, 
+            5, 
+            this.height * 0.1
+        );
         
         // Display rock count
         ctx.fillStyle = 'white';
@@ -129,19 +169,22 @@ export class Player extends GameObject {
         
         ctx.restore();
     }
-
-    setOnGround(value: boolean): void {
-        this.isOnGround = value;
-        if (value) {
-            this.isJumping = false;
+    
+    setOnGround(isOnGround: boolean): void {
+        this.isOnGround = isOnGround;
+        if (isOnGround) {
+            this.jumpCount = 0; // Reset jump count when landing
         }
     }
-
-    addRocks(count: number): void {
-        this.rocksInTruck += count;
-    }
-
+    
     getRockCount(): number {
         return this.rocksInTruck;
+    }
+    
+    addRocks(count: number): void {
+        this.rocksInTruck += count;
+        if (this.rocksInTruck < 0) {
+            this.rocksInTruck = 0;
+        }
     }
 }

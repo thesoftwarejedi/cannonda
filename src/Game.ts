@@ -278,8 +278,8 @@ export class Game {
                 entity.isActive = false;
                 this.markEntityForRemoval(entity);
             } else if (entity.type === ObjectType.CannonTruck || entity.type === ObjectType.Rock) {
-                // Collided with an obstacle, lose some rocks
-                const rocksLost = Math.min(5, this.player.getRockCount());
+                // Collided with a cannon truck or rock, lose 10 rocks
+                const rocksLost = Math.min(10, this.player.getRockCount());
                 this.player.addRocks(-rocksLost);
                 entity.isActive = false;
                 this.markEntityForRemoval(entity);
@@ -311,7 +311,15 @@ export class Game {
                     entity.isActive = false;
                     this.markEntityForRemoval(target);
                     this.markEntityForRemoval(entity);
-                    this.score += 50;
+                    
+                    // If laser hit a truck, gain 5 rocks
+                    if (target.type === ObjectType.CannonTruck) {
+                        this.player.addRocks(5);
+                        this.score += 50;
+                    } else {
+                        // Hit elk or rock projectile
+                        this.score += 50;
+                    }
                     break;
                 }
             }

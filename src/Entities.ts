@@ -2,14 +2,13 @@ import { GameObject, ObjectType } from './GameObject';
 import { Vector2D } from './Vector2D';
 
 export class Elk extends GameObject {
-    private jumpTimer: number = 0;
-    private jumpInterval: number = 2; // seconds
-    private jumpForce: number = -400;
     private gravity: number = 1000;
     private isOnGround: boolean = true;
     
     constructor(x: number, y: number) {
         super(x, y, 60, 70, ObjectType.Elk);
+        // Set initial velocity, moving from right to left
+        this.velocity = new Vector2D(-150, 0);
     }
     
     update(deltaTime: number, groundY: number): void {
@@ -24,14 +23,7 @@ export class Elk extends GameObject {
             this.isOnGround = true;
         }
         
-        // Random jumping behavior
-        if (this.isOnGround) {
-            this.jumpTimer += deltaTime;
-            if (this.jumpTimer >= this.jumpInterval) {
-                this.velocity = new Vector2D(this.velocity.x, this.jumpForce * 0.7);
-                this.jumpTimer = 0;
-            }
-        }
+        // No jumping behavior - elk just run along the ground
         
         super.update(deltaTime);
     }
@@ -40,47 +32,43 @@ export class Elk extends GameObject {
         ctx.save();
         
         // Draw elk body
-        ctx.fillStyle = '#795548'; // Brown
-        ctx.fillRect(this.position.x, this.position.y + this.height * 0.3, this.width, this.height * 0.7);
+        ctx.fillStyle = '#795548'; // Brown for elk
+        ctx.fillRect(this.position.x, this.position.y, this.width, this.height * 0.6);
         
         // Draw elk head
-        ctx.fillStyle = '#8D6E63'; // Lighter brown
         ctx.fillRect(
             this.position.x + this.width * 0.7, 
-            this.position.y, 
-            this.width * 0.3, 
-            this.height * 0.4
+            this.position.y - this.height * 0.2,
+            this.width * 0.3,
+            this.height * 0.3
         );
         
         // Draw antlers
-        ctx.strokeStyle = '#5D4037'; // Dark brown
-        ctx.lineWidth = 3;
         ctx.beginPath();
-        // Left antler
-        ctx.moveTo(this.position.x + this.width * 0.8, this.position.y);
-        ctx.lineTo(this.position.x + this.width * 0.7, this.position.y - this.height * 0.2);
-        ctx.moveTo(this.position.x + this.width * 0.7, this.position.y - this.height * 0.1);
-        ctx.lineTo(this.position.x + this.width * 0.6, this.position.y - this.height * 0.3);
-        // Right antler
-        ctx.moveTo(this.position.x + this.width * 0.9, this.position.y);
-        ctx.lineTo(this.position.x + this.width * 0.9, this.position.y - this.height * 0.3);
-        ctx.moveTo(this.position.x + this.width * 0.9, this.position.y - this.height * 0.15);
-        ctx.lineTo(this.position.x + this.width * 1.0, this.position.y - this.height * 0.25);
+        ctx.moveTo(this.position.x + this.width * 0.8, this.position.y - this.height * 0.2);
+        ctx.lineTo(this.position.x + this.width * 0.9, this.position.y - this.height * 0.5);
+        ctx.lineTo(this.position.x + this.width, this.position.y - this.height * 0.3);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(this.position.x + this.width * 0.7, this.position.y - this.height * 0.2);
+        ctx.lineTo(this.position.x + this.width * 0.6, this.position.y - this.height * 0.5);
+        ctx.lineTo(this.position.x + this.width * 0.5, this.position.y - this.height * 0.3);
         ctx.stroke();
         
         // Draw legs
         ctx.fillStyle = '#5D4037'; // Dark brown
         ctx.fillRect(
             this.position.x + this.width * 0.2, 
-            this.position.y + this.height * 0.7, 
+            this.position.y + this.height * 0.6, 
             this.width * 0.1, 
-            this.height * 0.3
+            this.height * 0.4
         );
         ctx.fillRect(
             this.position.x + this.width * 0.7, 
-            this.position.y + this.height * 0.7, 
+            this.position.y + this.height * 0.6, 
             this.width * 0.1, 
-            this.height * 0.3
+            this.height * 0.4
         );
         
         ctx.restore();
@@ -119,48 +107,57 @@ export class CannonTruck extends GameObject {
         
         // Draw truck base (looks like a logging truck)
         ctx.fillStyle = '#34495e'; // Dark blue
-        ctx.fillRect(this.position.x, this.position.y + this.height * 0.4, this.width, this.height * 0.6);
+        ctx.fillRect(this.position.x, this.position.y, this.width, this.height * 0.7);
         
-        // Draw truck cab
+        // Draw truck cabin
         ctx.fillStyle = '#2c3e50'; // Darker blue
         ctx.fillRect(
             this.position.x, 
-            this.position.y + this.height * 0.2, 
+            this.position.y, 
             this.width * 0.3, 
-            this.height * 0.4
+            this.height * 0.5
         );
         
-        // Draw cannon/log holder
-        ctx.fillStyle = '#95a5a6'; // Gray
-        ctx.fillRect(
-            this.position.x + this.width * 0.35, 
-            this.position.y, 
-            this.width * 0.1, 
-            this.height * 0.4
-        );
-        ctx.fillRect(
-            this.position.x + this.width * 0.75, 
-            this.position.y, 
-            this.width * 0.1, 
-            this.height * 0.4
-        );
+        // Draw logs (cannon)
+        ctx.fillStyle = '#795548'; // Brown for logs
+        for (let i = 0; i < 3; i++) {
+            ctx.fillRect(
+                this.position.x + this.width * 0.35, 
+                this.position.y + i * (this.height * 0.15), 
+                this.width * 0.6, 
+                this.height * 0.1
+            );
+        }
         
-        // Draw cannon
-        ctx.fillStyle = '#7f8c8d'; // Darker gray
+        // Draw cannon barrel
+        ctx.fillStyle = '#7f8c8d';
         ctx.fillRect(
-            this.position.x + this.width * 0.3, 
-            this.position.y + this.height * 0.2, 
-            this.width * 0.5, 
-            this.height * 0.2
+            this.position.x - this.width * 0.2,
+            this.position.y + this.height * 0.25,
+            this.width * 0.3,
+            this.height * 0.15
         );
         
         // Draw wheels
-        ctx.fillStyle = '#2c3e50'; // Dark blue
+        ctx.fillStyle = '#2c3e50';
         ctx.beginPath();
-        ctx.arc(this.position.x + this.width * 0.2, this.position.y + this.height, this.height * 0.2, 0, Math.PI * 2);
+        ctx.arc(
+            this.position.x + this.width * 0.2, 
+            this.position.y + this.height * 0.85, 
+            this.height * 0.15, 
+            0, 
+            Math.PI * 2
+        );
         ctx.fill();
+        
         ctx.beginPath();
-        ctx.arc(this.position.x + this.width * 0.8, this.position.y + this.height, this.height * 0.2, 0, Math.PI * 2);
+        ctx.arc(
+            this.position.x + this.width * 0.8, 
+            this.position.y + this.height * 0.85, 
+            this.height * 0.15, 
+            0, 
+            Math.PI * 2
+        );
         ctx.fill();
         
         ctx.restore();
@@ -168,37 +165,24 @@ export class CannonTruck extends GameObject {
 }
 
 export class Rock extends GameObject {
-    private rotationAngle: number = 0;
-    private rotationSpeed: number = Math.random() * 2 - 1; // Random rotation
-    
-    constructor(x: number, y: number, vx: number) {
+    constructor(x: number, y: number, velocityX: number) {
         super(x, y, 15, 15, ObjectType.Rock);
-        this.velocity = new Vector2D(vx, 0);
-        // Add a bit of random vertical velocity for more natural movement
-        this.velocity = new Vector2D(vx, (Math.random() - 0.5) * 50);
-    }
-    
-    update(deltaTime: number): void {
-        this.rotationAngle += this.rotationSpeed * deltaTime;
-        super.update(deltaTime);
+        this.velocity = new Vector2D(velocityX, 0);
     }
     
     render(ctx: CanvasRenderingContext2D): void {
         ctx.save();
         
-        // Create a more interesting rock shape
-        ctx.translate(this.position.x + this.width/2, this.position.y + this.height/2);
-        ctx.rotate(this.rotationAngle);
-        
+        // Draw rock
         ctx.fillStyle = '#7f8c8d';
         ctx.beginPath();
-        ctx.moveTo(-this.width/2, -this.height/3);
-        ctx.lineTo(-this.width/3, -this.height/2);
-        ctx.lineTo(this.width/3, -this.height/2);
-        ctx.lineTo(this.width/2, 0);
-        ctx.lineTo(this.width/4, this.height/2);
-        ctx.lineTo(-this.width/3, this.height/3);
-        ctx.closePath();
+        ctx.arc(
+            this.position.x + this.width / 2, 
+            this.position.y + this.height / 2, 
+            this.width / 2, 
+            0, 
+            Math.PI * 2
+        );
         ctx.fill();
         
         ctx.restore();
@@ -211,26 +195,26 @@ export class Ground extends GameObject {
     }
     
     render(ctx: CanvasRenderingContext2D): void {
-        // Draw ground with some texture
         ctx.save();
         
-        // Main ground
-        ctx.fillStyle = '#8B4513'; // SaddleBrown
+        // Draw ground
+        ctx.fillStyle = '#8B4513'; // Saddle brown for dirt
         ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
         
-        // Grass on top
-        ctx.fillStyle = '#2ecc71'; // Green
-        ctx.fillRect(this.position.x, this.position.y, this.width, 5);
+        // Draw grass on top
+        ctx.fillStyle = '#2ecc71';
+        ctx.fillRect(this.position.x, this.position.y, this.width, 10);
         
-        // Add some texture with dots/rocks
-        ctx.fillStyle = '#5D4037'; // Darker brown
-        for (let i = 0; i < this.width; i += 30) {
-            const rockSize = 2 + Math.random() * 3;
+        // Draw some variation in the ground
+        ctx.fillStyle = '#6d4c41';
+        for (let i = 0; i < this.width; i += 50) {
+            const randomWidth = Math.random() * 30 + 10;
+            const randomHeight = Math.random() * 5 + 15;
             ctx.fillRect(
-                this.position.x + i + Math.random() * 20, 
-                this.position.y + 5 + Math.random() * (this.height - 10), 
-                rockSize, 
-                rockSize
+                this.position.x + i, 
+                this.position.y + randomHeight, 
+                randomWidth, 
+                5
             );
         }
         
