@@ -262,8 +262,11 @@ export class Game {
                 
                 // Game over if no rocks left
                 if (this.player.getRockCount() <= 0) {
-                    alert(`Game Over! Your final score is ${this.score}`);
-                    this.reset();
+                    // Add a small delay before showing the game over alert
+                    setTimeout(() => {
+                        alert(`Game Over! Your final score is ${this.score}`);
+                        this.reset();
+                    }, 100);
                 }
             }
         }
@@ -276,7 +279,8 @@ export class Game {
                      target.type === ObjectType.CannonTruck || 
                      target.type === ObjectType.Rock) && 
                     entity.intersects(target) && 
-                    target.isActive
+                    target.isActive && 
+                    target !== entity
                 ) {
                     // Laser hit something
                     target.isActive = false;
