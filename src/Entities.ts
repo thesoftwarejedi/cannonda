@@ -90,7 +90,7 @@ export class Elk extends GameObject {
 export class CannonTruck extends GameObject {
     private fireTimer: number = 0;
     private fireInterval: number = 3; // seconds
-    private projectileSpeed: number = 300;
+    private projectileSpeed: number = -300; // Changed to negative to shoot left
     
     constructor(x: number, y: number) {
         super(x, y, 90, 60, ObjectType.CannonTruck);
@@ -104,7 +104,7 @@ export class CannonTruck extends GameObject {
         if (this.fireTimer >= this.fireInterval) {
             // Fire a cannonball
             addProjectile(
-                this.position.x + this.width * 0.3, 
+                this.position.x, // Changed to shoot from left side of truck 
                 this.position.y + this.height * 0.3,
                 this.projectileSpeed
             );

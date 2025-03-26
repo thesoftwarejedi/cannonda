@@ -17,12 +17,14 @@ export class Game {
     private spawnTimer: number = 0;
     private groundLevel: number;
     private ground: Ground;
+    private entitiesToRemove: GameObject[] = []; // Add a list to track entities to remove
     
     constructor(canvasId: string) {
         this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
         this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
         this.inputManager = new InputManager();
         this.entities = [];
+        this.entitiesToRemove = [];
         this.scoreElement = document.getElementById('score-display') as HTMLElement;
         this.groundLevel = this.canvas.height - 50;
         
@@ -58,6 +60,9 @@ export class Game {
         // Update and spawn entities
         this.updateEntities(deltaTime);
         this.spawnEntities(deltaTime);
+        
+        // Remove entities that were marked for removal
+        this.removeMarkedEntities();
         
         // Render everything
         this.renderEntities();
@@ -111,7 +116,7 @@ export class Game {
                 entity.position.x > this.canvas.width + 100 ||
                 entity.position.y > this.canvas.height + 100
             ) {
-                this.entities.splice(i, 1);
+                this.markEntityForRemoval(entity);
                 continue;
             }
             
@@ -171,7 +176,9 @@ export class Game {
         
         // Render all entities
         for (const entity of sortedEntities) {
-            entity.render(this.ctx);
+            if (entity.isActive) {
+                entity.render(this.ctx);
+            }
         }
     }
     
@@ -219,13 +226,13 @@ export class Game {
                 // Jumped over an elk, gain score
                 this.score += 100;
                 entity.isActive = false;
-                this.entities = this.entities.filter(e => e !== entity);
+                this.markEntityForRemoval(entity);
             } else if (entity.type === ObjectType.CannonTruck || entity.type === ObjectType.Rock) {
                 // Collided with an obstacle, lose some rocks
                 const rocksLost = Math.min(5, this.player.getRockCount());
                 this.player.addRocks(-rocksLost);
                 entity.isActive = false;
-                this.entities = this.entities.filter(e => e !== entity);
+                this.markEntityForRemoval(entity);
                 
                 // Game over if no rocks left
                 if (this.player.getRockCount() <= 0) {
@@ -248,11 +255,25 @@ export class Game {
                     // Laser hit something
                     target.isActive = false;
                     entity.isActive = false;
-                    this.entities = this.entities.filter(e => e !== target && e !== entity);
+                    this.markEntityForRemoval(target);
+                    this.markEntityForRemoval(entity);
                     this.score += 50;
                     break;
                 }
             }
+        }
+    }
+    
+    private markEntityForRemoval(entity: GameObject): void {
+        if (!this.entitiesToRemove.includes(entity)) {
+            this.entitiesToRemove.push(entity);
+        }
+    }
+    
+    private removeMarkedEntities(): void {
+        if (this.entitiesToRemove.length > 0) {
+            this.entities = this.entities.filter(entity => !this.entitiesToRemove.includes(entity));
+            this.entitiesToRemove = [];
         }
     }
     
@@ -263,6 +284,7 @@ export class Game {
     private reset(): void {
         // Reset the game state
         this.entities = [];
+        this.entitiesToRemove = [];
         this.score = 0;
         
         // Recreate ground
