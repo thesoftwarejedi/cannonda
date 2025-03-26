@@ -4,6 +4,10 @@ import { Vector2D } from './Vector2D';
 export class Elk extends GameObject {
     private gravity: number = 1000;
     private isOnGround: boolean = true;
+    private attackTimer: number = 0;
+    private attackCooldown: number = 1.5; // seconds between lightning attacks
+    private isAngry: boolean = false;
+    private lightningParticles: LightningParticle[] = [];
     
     constructor(x: number, y: number) {
         super(x, y, 60, 70, ObjectType.Elk);
@@ -11,7 +15,7 @@ export class Elk extends GameObject {
         this.velocity = new Vector2D(-150, 0);
     }
     
-    update(deltaTime: number, groundY: number): void {
+    update(deltaTime: number, groundY: number, playerPosition?: Vector2D): void {
         // Apply gravity
         if (this.position.y < groundY - this.height) {
             this.acceleration = new Vector2D(0, this.gravity);
@@ -23,16 +27,99 @@ export class Elk extends GameObject {
             this.isOnGround = true;
         }
         
-        // No jumping behavior - elk just run along the ground
+        // Update lightning attack if angry
+        if (this.isAngry && playerPosition) {
+            this.attackTimer += deltaTime;
+            
+            if (this.attackTimer >= this.attackCooldown) {
+                this.attackTimer = 0;
+                this.shootLightning(playerPosition);
+            }
+        }
+        
+        // Update lightning particles
+        for (let i = this.lightningParticles.length - 1; i >= 0; i--) {
+            const particle = this.lightningParticles[i];
+            particle.lifetime -= deltaTime;
+            
+            if (particle.lifetime <= 0) {
+                this.lightningParticles.splice(i, 1);
+            }
+        }
         
         super.update(deltaTime);
+    }
+    
+    setAngry(angry: boolean): void {
+        this.isAngry = angry;
+        if (angry) {
+            // Speed up angry elk
+            this.velocity = new Vector2D(-250, 0);
+        }
+    }
+    
+    shootLightning(targetPosition: Vector2D): void {
+        // Create lightning bolt from eyes to player
+        const eyePosition = new Vector2D(
+            this.position.x + this.width * 0.85,
+            this.position.y - this.height * 0.05
+        );
+        
+        // Create lightning particles along the path
+        const segments = 10;
+        const dx = (targetPosition.x - eyePosition.x) / segments;
+        const dy = (targetPosition.y - eyePosition.y) / segments;
+        
+        for (let i = 0; i < segments; i++) {
+            // Add some randomness to the lightning path
+            const jitterX = (Math.random() - 0.5) * 30;
+            const jitterY = (Math.random() - 0.5) * 30;
+            
+            const x = eyePosition.x + dx * i + jitterX;
+            const y = eyePosition.y + dy * i + jitterY;
+            
+            // Add particles with different lifetimes for a more dynamic effect
+            this.lightningParticles.push({
+                position: new Vector2D(x, y),
+                size: Math.random() * 5 + 5,
+                lifetime: Math.random() * 0.3 + 0.1,
+                color: '#00FFFF' // Cyan color for lightning
+            });
+        }
+        
+        // Add extra particles around the target for impact effect
+        for (let i = 0; i < 15; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const distance = Math.random() * 30;
+            const x = targetPosition.x + Math.cos(angle) * distance;
+            const y = targetPosition.y + Math.sin(angle) * distance;
+            
+            this.lightningParticles.push({
+                position: new Vector2D(x, y),
+                size: Math.random() * 8 + 2,
+                lifetime: Math.random() * 0.5 + 0.2,
+                color: i % 2 === 0 ? '#FFFFFF' : '#00FFFF' // Alternate white and cyan
+            });
+        }
     }
     
     render(ctx: CanvasRenderingContext2D): void {
         ctx.save();
         
-        // Draw elk body
-        ctx.fillStyle = '#795548'; // Brown for elk
+        // Draw lightning particles first (behind elk)
+        for (const particle of this.lightningParticles) {
+            ctx.globalAlpha = particle.lifetime * 3; // Fade out effect
+            ctx.fillStyle = particle.color;
+            ctx.beginPath();
+            ctx.arc(particle.position.x, particle.position.y, particle.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Reset alpha
+        ctx.globalAlpha = 1;
+        
+        // Draw elk body - red tint if angry
+        ctx.fillStyle = this.isAngry ? '#A83232' : '#795548'; // Angry red vs Brown
         ctx.fillRect(this.position.x, this.position.y, this.width, this.height * 0.6);
         
         // Draw elk head
@@ -56,8 +143,52 @@ export class Elk extends GameObject {
         ctx.lineTo(this.position.x + this.width * 0.5, this.position.y - this.height * 0.3);
         ctx.stroke();
         
+        // Draw eyes - glowing if angry
+        if (this.isAngry) {
+            // Glowing cyan eyes
+            ctx.fillStyle = '#00FFFF';
+            ctx.beginPath();
+            ctx.arc(
+                this.position.x + this.width * 0.85, 
+                this.position.y - this.height * 0.05,
+                5, 0, Math.PI * 2
+            );
+            ctx.fill();
+            
+            // Draw glow effect
+            const gradient = ctx.createRadialGradient(
+                this.position.x + this.width * 0.85,
+                this.position.y - this.height * 0.05,
+                2,
+                this.position.x + this.width * 0.85,
+                this.position.y - this.height * 0.05,
+                10
+            );
+            gradient.addColorStop(0, 'rgba(0, 255, 255, 0.8)');
+            gradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(
+                this.position.x + this.width * 0.85,
+                this.position.y - this.height * 0.05,
+                10, 0, Math.PI * 2
+            );
+            ctx.fill();
+        } else {
+            // Normal dark eyes
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(
+                this.position.x + this.width * 0.85, 
+                this.position.y - this.height * 0.05,
+                3, 0, Math.PI * 2
+            );
+            ctx.fill();
+        }
+        
         // Draw legs
-        ctx.fillStyle = '#5D4037'; // Dark brown
+        ctx.fillStyle = this.isAngry ? '#8B2500' : '#5D4037'; // Dark angry red vs Dark brown
         ctx.fillRect(
             this.position.x + this.width * 0.2, 
             this.position.y + this.height * 0.6, 
@@ -73,6 +204,14 @@ export class Elk extends GameObject {
         
         ctx.restore();
     }
+}
+
+// Lightning particle interface
+interface LightningParticle {
+    position: Vector2D;
+    size: number;
+    lifetime: number;
+    color: string;
 }
 
 export class CannonTruck extends GameObject {

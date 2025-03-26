@@ -199,7 +199,8 @@ export class Game {
             
             // Update entity based on type
             if (entity.type === ObjectType.Elk) {
-                (entity as Elk).update(deltaTime, this.groundLevel);
+                // Pass player position to elk for lightning attacks
+                (entity as Elk).update(deltaTime, this.groundLevel, this.player.position);
             } else if (entity.type === ObjectType.CannonTruck) {
                 (entity as CannonTruck).update(deltaTime, this.spawnProjectile.bind(this));
             } else {
@@ -333,6 +334,9 @@ export class Game {
                 this.score += 100;
                 entity.isActive = false;
                 this.markEntityForRemoval(entity);
+                
+                // Make all other elk angry when you hit one of them
+                this.makeAllElkAngry();
             } else if (entity.type === ObjectType.CannonTruck || entity.type === ObjectType.Rock) {
                 // Collided with a cannon truck or rock, lose 10 rocks
                 const rocksLost = Math.min(10, this.player.getRockCount());
@@ -351,33 +355,43 @@ export class Game {
             }
         }
         
-        // Handle collisions between lasers and other entities
+        // Handle laser hitting entities
         if (entity.type === ObjectType.Laser) {
             for (const target of this.entities) {
-                if (
-                    (target.type === ObjectType.Elk || 
-                     target.type === ObjectType.CannonTruck || 
-                     target.type === ObjectType.Rock) && 
-                    entity.intersects(target) && 
-                    target.isActive && 
-                    target !== entity
-                ) {
-                    // Laser hit something
-                    target.isActive = false;
-                    entity.isActive = false;
-                    this.markEntityForRemoval(target);
-                    this.markEntityForRemoval(entity);
-                    
-                    // If laser hit a truck, gain 5 rocks
-                    if (target.type === ObjectType.CannonTruck) {
-                        this.player.addRocks(5);
-                        this.score += 50;
-                    } else {
-                        // Hit elk or rock projectile
-                        this.score += 50;
+                if (target !== this.player && target !== this.ground && target !== entity && target.isActive) {
+                    if (entity.intersects(target)) {
+                        if (target.type === ObjectType.Elk) {
+                            // Laser hit an elk - gain points and make all elk angry!
+                            this.score += 50;
+                            entity.isActive = false;
+                            this.markEntityForRemoval(entity);
+                            
+                            // Make all elk angry and shoot lightning
+                            this.makeAllElkAngry();
+                        } else if (target.type === ObjectType.CannonTruck || target.type === ObjectType.Rock) {
+                            // Laser hit a cannon truck or rock, gain points
+                            this.score += 50;
+                            entity.isActive = false;
+                            target.isActive = false;
+                            this.markEntityForRemoval(entity);
+                            this.markEntityForRemoval(target);
+                        }
                     }
-                    break;
                 }
+            }
+        }
+        
+        // Update score display
+        if (this.scoreElement) {
+            this.scoreElement.textContent = `Score: ${this.score} | Rocks: ${this.player.getRockCount()}`;
+        }
+    }
+    
+    private makeAllElkAngry(): void {
+        // Make all elk angry and start shooting lightning
+        for (const entity of this.entities) {
+            if (entity.type === ObjectType.Elk && entity.isActive) {
+                (entity as Elk).setAngry(true);
             }
         }
     }
