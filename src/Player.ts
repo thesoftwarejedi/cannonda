@@ -56,7 +56,7 @@ export class Player extends GameObject {
         }
 
         // Handle jump input
-        if (input.isKeyDown(Keys.Space) && this.isOnGround) {
+        if (input.isKeyDown(Keys.Up) && this.isOnGround) {
             this.velocity = new Vector2D(this.velocity.x, this.jumpForce);
             this.isJumping = true;
             this.isOnGround = false;
