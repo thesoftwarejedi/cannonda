@@ -77,13 +77,13 @@ export class Player extends GameObject {
         }
 
         if (input.isKeyPressed(Keys.Down) && this.laserCooldown <= 0 && this.rocksInTruck > 0) {
-            // Create a new laser - position it at the back of the truck (which is on the left)
+            // Create a new laser - position it at the back of the truck (right side)
             const laser = new Laser(
-                this.position.x, 
+                this.position.x + this.width, 
                 this.position.y + this.height / 2 - 5
             );
-            // Lasers should shoot backwards (to the left) because the truck is driving backwards
-            laser.velocity = new Vector2D(-400, 0);
+            // Lasers should shoot to the right from the back headlights
+            laser.velocity = new Vector2D(400, 0);
             
             addEntity(laser);
             this.laserCooldown = this.laserCooldownMax;
@@ -118,9 +118,9 @@ export class Player extends GameObject {
         ctx.arc(this.position.x + this.width * 0.8, this.position.y + this.height, this.height * 0.2, 0, Math.PI * 2);
         ctx.fill();
         
-        // Headlights (back headlights for laser) - moved to the left side of truck
+        // Back headlights for laser - moved to the right side of truck
         ctx.fillStyle = '#f1c40f'; // Yellow for headlights
-        ctx.fillRect(this.position.x, this.position.y + this.height * 0.5 - 5, 5, 10);
+        ctx.fillRect(this.position.x + this.width - 5, this.position.y + this.height * 0.5 - 5, 5, 10);
         
         // Display rock count
         ctx.fillStyle = 'white';
