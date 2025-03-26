@@ -32,7 +32,9 @@ export class Player extends GameObject {
     private jumpForce: number = -500;
     private jumpCount: number = 0;
     private maxJumps: number = 2; // Allow double jump
-    private speed: number = 200;
+    private baseSpeed: number = 200;
+    private maxSpeed: number = 400; // Maximum speed limit
+    private accelerationRate: number = 300; // Acceleration per second
     private gravity: number = 1000;
     private isJumping: boolean = false;
     private isOnGround: boolean = false;
@@ -67,15 +69,9 @@ export class Player extends GameObject {
             this.jumpCount++;
         }
 
-        // Handle movement input (since we're driving backwards, left/right are reversed)
-        if (input.isKeyPressed(Keys.Right)) {
-            this.velocity = new Vector2D(-this.speed, this.velocity.y);
-        } else if (input.isKeyPressed(Keys.Left)) {
-            this.velocity = new Vector2D(this.speed, this.velocity.y);
-        } else {
-            // Apply friction horizontally
-            this.velocity = new Vector2D(this.velocity.x * 0.9, this.velocity.y);
-        }
+        // Remove horizontal player movement - arrow keys now control scroll speed
+        // Apply friction horizontally to gradually stop
+        this.velocity = new Vector2D(this.velocity.x * 0.95, this.velocity.y);
 
         // Update laser cooldown
         if (this.laserCooldown > 0) {

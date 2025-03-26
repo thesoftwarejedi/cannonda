@@ -4,6 +4,7 @@ export enum Keys {
     Left = 'ArrowLeft',
     Right = 'ArrowRight',
     Space = ' ',
+    Enter = 'Enter'
 }
 
 export class InputManager {

@@ -1,4 +1,4 @@
-import { InputManager } from './Input';
+import { InputManager, Keys } from './Input';
 import { Player, Laser } from './Player';
 import { Elk, CannonTruck, Rock, Ground } from './Entities';
 import { GameObject, ObjectType } from './GameObject';
@@ -19,7 +19,10 @@ export class Game {
     private ground: Ground;
     private entitiesToRemove: GameObject[] = [];
     private cameraOffset: number = 0;
-    private scrollSpeed: number = 100; // pixels per second
+    private scrollSpeed: number = 100; // Base speed in pixels per second
+    private minScrollSpeed: number = 50;
+    private maxScrollSpeed: number = 300;
+    private scrollAcceleration: number = 50; // How fast to change scroll speed
     private gameStarted: boolean = false; // Track if game has started
     
     constructor(canvasId: string) {
@@ -91,7 +94,7 @@ export class Game {
             this.renderStartScreen();
             
             // Check for any key press to start the game
-            if (this.inputManager.isKeyDown('Enter') || this.inputManager.isKeyDown(' ')) {
+            if (this.inputManager.isKeyDown(Keys.Enter) || this.inputManager.isKeyDown(Keys.Space)) {
                 this.gameStarted = true;
             }
         } else {
@@ -147,6 +150,23 @@ export class Game {
     }
     
     private updateCamera(deltaTime: number): void {
+        // Handle scrolling speed controls
+        if (this.gameStarted) {
+            if (this.inputManager.isKeyPressed(Keys.Right)) {
+                // Speed up scrolling
+                this.scrollSpeed += this.scrollAcceleration * deltaTime;
+                if (this.scrollSpeed > this.maxScrollSpeed) {
+                    this.scrollSpeed = this.maxScrollSpeed;
+                }
+            } else if (this.inputManager.isKeyPressed(Keys.Left)) {
+                // Slow down scrolling
+                this.scrollSpeed -= this.scrollAcceleration * deltaTime;
+                if (this.scrollSpeed < this.minScrollSpeed) {
+                    this.scrollSpeed = this.minScrollSpeed;
+                }
+            }
+        }
+        
         // Advance the camera forward (right to left scrolling)
         this.cameraOffset += this.scrollSpeed * deltaTime;
     }
