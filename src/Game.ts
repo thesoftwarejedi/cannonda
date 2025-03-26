@@ -82,37 +82,38 @@ export class Game {
     }
     
     private gameLoop(timestamp: number): void {
+        if (!this.running) return;
+        
         // Calculate delta time
-        const deltaTime = (timestamp - this.lastTime) / 1000; // in seconds
+        const deltaTime = (timestamp - this.lastTime) / 1000; // convert to seconds
         this.lastTime = timestamp;
         
         // Clear the canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
+        // Check for game start
         if (!this.gameStarted) {
-            // Display start screen
-            this.renderStartScreen();
-            
-            // Check for any key press to start the game
-            if (this.inputManager.isKeyDown(Keys.Enter) || this.inputManager.isKeyDown(Keys.Space)) {
+            if (this.inputManager.isKeyPressed(Keys.Space) || this.inputManager.isKeyPressed(Keys.Enter)) {
                 this.gameStarted = true;
+                console.log("GAME STARTED!");
             }
+            // Draw start screen
+            this.renderStartScreen();
         } else {
-            // Update camera position
+            // Update game elements
             this.updateCamera(deltaTime);
-            
-            // Update and spawn entities
             this.updateEntities(deltaTime);
             this.spawnEntities(deltaTime);
-            
-            // Remove entities that were marked for removal
             this.removeMarkedEntities();
+            
+            // Update score display
+            this.scoreElement.textContent = `Score: ${this.score} | Rocks: ${this.player.getRockCount()}`;
+            
+            // Check for lightning hits
+            this.checkLightningHits();
             
             // Render everything
             this.renderEntities();
-            
-            // Update score display
-            this.scoreElement.textContent = `Score: ${this.score}`;
         }
         
         // Handle input post-update
@@ -285,42 +286,186 @@ export class Game {
     }
     
     private drawBackground(): void {
-        // Draw mountains with parallax effect (slower scrolling)
-        this.ctx.fillStyle = '#95a5a6';
-        for (let i = 0; i < Math.ceil(this.canvas.width / 300) + 2; i++) {
-            const mountainWidth = 200 + i * 50;
-            const mountainHeight = 120 + i * 30;
+        // Draw a subtle sky gradient
+        const skyGradient = this.ctx.createLinearGradient(0, 0, 0, this.groundLevel);
+        skyGradient.addColorStop(0, '#4286f4'); // Blue at top
+        skyGradient.addColorStop(1, '#c2e9fb'); // Lighter blue near horizon
+        this.ctx.fillStyle = skyGradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Draw distant mountains (blue-ish)
+        this.ctx.fillStyle = '#758EA8';
+        for (let i = 0; i < Math.ceil(this.canvas.width / 350) + 2; i++) {
+            // Far mountains scroll at 20% of foreground speed
+            const parallaxOffset = this.cameraOffset * 0.2;
+            const x = ((i * 350) - (parallaxOffset % 350)) % (this.canvas.width + 350) - 200;
             
-            // Create parallax effect - mountains scroll at 40% of foreground speed
-            const parallaxOffset = this.cameraOffset * 0.4;
-            const x = ((i * 300) - (parallaxOffset % 300)) % (this.canvas.width + 300) - 150;
+            // Draw a more realistic mountain shape with multiple peaks
+            this.drawRealisticMountain(
+                x, 
+                this.groundLevel, 
+                350, 
+                150, 
+                '#758EA8', 
+                '#A1BDDB'
+            );
+        }
+        
+        // Draw middle mountains (darker purplish)
+        this.ctx.fillStyle = '#596C87';
+        for (let i = 0; i < Math.ceil(this.canvas.width / 400) + 2; i++) {
+            // Middle mountains scroll at 35% of foreground speed
+            const parallaxOffset = this.cameraOffset * 0.35;
+            const x = ((i * 400) - (parallaxOffset % 400)) % (this.canvas.width + 400) - 200;
             
+            this.drawRealisticMountain(
+                x, 
+                this.groundLevel, 
+                400, 
+                180, 
+                '#596C87', 
+                '#7A91B0'
+            );
+        }
+        
+        // Draw closer mountains (dark gray-green)
+        this.ctx.fillStyle = '#3E4B5E';
+        for (let i = 0; i < Math.ceil(this.canvas.width / 450) + 2; i++) {
+            // Close mountains scroll at 50% of foreground speed
+            const parallaxOffset = this.cameraOffset * 0.5;
+            const x = ((i * 450) - (parallaxOffset % 450)) % (this.canvas.width + 450) - 200;
+            
+            this.drawRealisticMountain(
+                x, 
+                this.groundLevel, 
+                450, 
+                200, 
+                '#3E4B5E', 
+                '#5E708B'
+            );
+        }
+        
+        // Draw realistic clouds with parallax
+        for (let i = 0; i < Math.ceil(this.canvas.width / 250) + 4; i++) {
+            // Clouds scroll at 15% of foreground speed
+            const parallaxOffset = this.cameraOffset * 0.15;
+            const x = ((i * 250) - (parallaxOffset % 250)) % (this.canvas.width + 250) - 100;
+            
+            // Vary cloud height and size for more realism
+            const y = 50 + (i % 3) * 40;
+            const scale = 0.7 + (i % 5) * 0.2;
+            
+            this.drawRealisticCloud(x, y, scale);
+        }
+    }
+    
+    private drawRealisticMountain(x: number, groundY: number, width: number, height: number, baseColor: string, peakColor: string): void {
+        this.ctx.save();
+        
+        // Create a gradient for the mountain
+        const gradient = this.ctx.createLinearGradient(x, groundY, x, groundY - height);
+        gradient.addColorStop(0, baseColor);
+        gradient.addColorStop(0.7, baseColor);
+        gradient.addColorStop(1, peakColor);
+        this.ctx.fillStyle = gradient;
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(x, groundY);
+        
+        // Create a realistic mountain silhouette with multiple peaks
+        const segments = 20;
+        const segmentWidth = width / segments;
+        
+        // First point
+        this.ctx.lineTo(x, groundY);
+        
+        // Create varying peaks
+        for (let i = 0; i <= segments; i++) {
+            const segX = x + i * segmentWidth;
+            
+            // Use a sine function for natural-looking mountains
+            const normalizedPos = i / segments;
+            const baseHeight = Math.sin(normalizedPos * Math.PI) * height;
+            
+            // Add some additional variation
+            let variance = 0;
+            if (i > 0 && i < segments) {
+                // More peaks in the middle, sloping down at edges
+                variance = Math.sin(normalizedPos * Math.PI * 3) * (height * 0.2);
+            }
+            
+            const peakHeight = Math.max(0, baseHeight + variance);
+            this.ctx.lineTo(segX, groundY - peakHeight);
+        }
+        
+        // Complete the shape
+        this.ctx.lineTo(x + width, groundY);
+        this.ctx.closePath();
+        this.ctx.fill();
+        
+        // Add subtle snow caps if it's high enough
+        if (height > 150) {
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
             this.ctx.beginPath();
-            this.ctx.moveTo(x, this.groundLevel);
-            this.ctx.lineTo(x + mountainWidth / 2, this.groundLevel - mountainHeight);
-            this.ctx.lineTo(x + mountainWidth, this.groundLevel);
+            this.ctx.moveTo(x, groundY - height * 0.9);
+            
+            for (let i = 0; i <= segments; i++) {
+                const segX = x + i * segmentWidth;
+                const normalizedPos = i / segments;
+                const baseHeight = Math.sin(normalizedPos * Math.PI) * height;
+                let variance = 0;
+                
+                if (i > 0 && i < segments) {
+                    variance = Math.sin(normalizedPos * Math.PI * 3) * (height * 0.2);
+                }
+                
+                const peakHeight = Math.max(0, baseHeight + variance);
+                if (peakHeight > height * 0.7) {
+                    const snowCapHeight = peakHeight * 0.2;
+                    this.ctx.lineTo(segX, groundY - peakHeight + snowCapHeight);
+                }
+            }
+            
+            this.ctx.lineTo(x + width, groundY - height * 0.9);
             this.ctx.closePath();
             this.ctx.fill();
         }
         
-        // Draw clouds with parallax effect (even slower)
-        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-        for (let i = 0; i < Math.ceil(this.canvas.width / 200) + 2; i++) {
-            // Clouds scroll at 20% of foreground speed
-            const parallaxOffset = this.cameraOffset * 0.2;
-            const x = ((i * 200) - (parallaxOffset % 200)) % (this.canvas.width + 200) - 100;
-            const y = 50 + i * 20;
-            this.drawCloud(x, y);
-        }
+        this.ctx.restore();
     }
     
-    private drawCloud(x: number, y: number): void {
+    private drawRealisticCloud(x: number, y: number, scale: number): void {
+        this.ctx.save();
+        
+        const baseRadius = 30 * scale;
+        
+        // Create a subtle gradient for more realistic clouds
+        const gradient = this.ctx.createRadialGradient(
+            x + baseRadius, y, 0,
+            x + baseRadius, y, baseRadius * 2
+        );
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0.4)');
+        this.ctx.fillStyle = gradient;
+        
+        // Draw a more natural, fluffy cloud shape
         this.ctx.beginPath();
-        this.ctx.arc(x, y, 20, 0, Math.PI * 2);
-        this.ctx.arc(x + 15, y - 10, 15, 0, Math.PI * 2);
-        this.ctx.arc(x + 30, y, 25, 0, Math.PI * 2);
-        this.ctx.arc(x + 15, y + 10, 15, 0, Math.PI * 2);
+        
+        // Start with a few large circles for the main body
+        this.ctx.arc(x + baseRadius, y, baseRadius, 0, Math.PI * 2);
+        this.ctx.arc(x + baseRadius * 1.6, y - baseRadius * 0.2, baseRadius * 0.8, 0, Math.PI * 2);
+        this.ctx.arc(x + baseRadius * 2.3, y + baseRadius * 0.1, baseRadius * 1.2, 0, Math.PI * 2);
+        
+        // Add smaller puffs around the edges for fluffiness
+        this.ctx.arc(x, y + baseRadius * 0.3, baseRadius * 0.6, 0, Math.PI * 2);
+        this.ctx.arc(x + baseRadius * 0.7, y - baseRadius * 0.6, baseRadius * 0.7, 0, Math.PI * 2);
+        this.ctx.arc(x + baseRadius * 1.2, y + baseRadius * 0.4, baseRadius * 0.7, 0, Math.PI * 2);
+        this.ctx.arc(x + baseRadius * 3, y - baseRadius * 0.2, baseRadius * 0.6, 0, Math.PI * 2);
+        this.ctx.arc(x + baseRadius * 3, y + baseRadius * 0.5, baseRadius * 0.5, 0, Math.PI * 2);
+        
         this.ctx.fill();
+        
+        this.ctx.restore();
     }
     
     private handleCollision(entity: GameObject): void {
@@ -369,12 +514,27 @@ export class Game {
                             // Make all elk angry and shoot lightning
                             this.makeAllElkAngry();
                         } else if (target.type === ObjectType.CannonTruck || target.type === ObjectType.Rock) {
-                            // Laser hit a cannon truck or rock, gain points
+                            // Laser hit a cannon truck or rock
                             this.score += 50;
                             entity.isActive = false;
-                            target.isActive = false;
                             this.markEntityForRemoval(entity);
-                            this.markEntityForRemoval(target);
+                            
+                            if (target.type === ObjectType.CannonTruck) {
+                                // For cannon trucks, check if it's destroyed (2 hits)
+                                const truck = target as CannonTruck;
+                                const isDestroyed = truck.takeDamage();
+                                
+                                if (isDestroyed) {
+                                    // Only remove and give rocks if fully destroyed
+                                    target.isActive = false;
+                                    this.markEntityForRemoval(target);
+                                    this.player.addRocks(5);
+                                }
+                            } else {
+                                // Rocks are destroyed in one hit
+                                target.isActive = false;
+                                this.markEntityForRemoval(target);
+                            }
                         }
                     }
                 }
@@ -431,5 +591,51 @@ export class Game {
         // Reset timers
         this.spawnTimer = 0;
         this.gameStarted = false;
+    }
+    
+    private checkLightningHits(): void {
+        // Loop through all elk to check their lightning
+        for (const entity of this.entities) {
+            if (entity.type === ObjectType.Elk && entity.isActive) {
+                const elk = entity as Elk;
+                
+                // Check if lightning has hit the player
+                if (elk.hasActiveLightning() && this.isLightningHittingPlayer(elk)) {
+                    // Lightning hit! Take away 15 rocks
+                    const rocksLost = Math.min(15, this.player.getRockCount());
+                    this.player.addRocks(-rocksLost);
+                    
+                    // Mark the lightning as handled so we don't count it multiple times
+                    elk.markLightningHit();
+                    
+                    // Game over if no rocks left
+                    if (this.player.getRockCount() <= 0) {
+                        setTimeout(() => {
+                            alert(`Game Over! Your final score is ${this.score}`);
+                            this.reset();
+                        }, 100);
+                    }
+                }
+            }
+        }
+    }
+    
+    private isLightningHittingPlayer(elk: Elk): boolean {
+        // Calculate a hit box from the elk to the player
+        // This assumes the lightning travels in a relatively straight line
+        const elkPosition = new Vector2D(
+            elk.position.x + elk.width * 0.85,
+            elk.position.y - elk.height * 0.05
+        );
+        
+        const playerCenter = new Vector2D(
+            this.player.position.x + this.player.width * 0.5,
+            this.player.position.y + this.player.height * 0.5
+        );
+        
+        // Check if the lightning is active and the player is in the path
+        return elk.isLightningActive() && 
+               playerCenter.x > elk.position.x && 
+               playerCenter.x < elkPosition.x + 300; // Lightning range
     }
 }

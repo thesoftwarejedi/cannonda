@@ -8,6 +8,8 @@ export class Elk extends GameObject {
     private attackCooldown: number = 1.5; // seconds between lightning attacks
     private isAngry: boolean = false;
     private lightningParticles: LightningParticle[] = [];
+    private hasLightningHit: boolean = false;
+    private lightningActive: boolean = false;
     
     constructor(x: number, y: number) {
         super(x, y, 60, 70, ObjectType.Elk);
@@ -47,6 +49,11 @@ export class Elk extends GameObject {
             }
         }
         
+        // If all lightning particles are gone, lightning is no longer active
+        if (this.lightningParticles.length === 0) {
+            this.lightningActive = false;
+        }
+        
         super.update(deltaTime);
     }
     
@@ -55,6 +62,9 @@ export class Elk extends GameObject {
         if (angry) {
             // Speed up angry elk
             this.velocity = new Vector2D(-250, 0);
+            
+            // Set timer to attack immediately on next update
+            this.attackTimer = this.attackCooldown;
         }
     }
     
@@ -101,6 +111,22 @@ export class Elk extends GameObject {
                 color: i % 2 === 0 ? '#FFFFFF' : '#00FFFF' // Alternate white and cyan
             });
         }
+        
+        // Mark lightning as active and not yet hit
+        this.lightningActive = true;
+        this.hasLightningHit = false;
+    }
+    
+    hasActiveLightning(): boolean {
+        return this.lightningActive && !this.hasLightningHit && this.lightningParticles.length > 0;
+    }
+    
+    markLightningHit(): void {
+        this.hasLightningHit = true;
+    }
+    
+    isLightningActive(): boolean {
+        return this.lightningActive && this.lightningParticles.length > 0;
     }
     
     render(ctx: CanvasRenderingContext2D): void {
@@ -215,9 +241,10 @@ interface LightningParticle {
 }
 
 export class CannonTruck extends GameObject {
-    private fireTimer: number = 0;
-    private fireInterval: number = 3; // seconds
+    private fireTimer: number = 1.5; // Start halfway through cooldown so first shot comes sooner
+    private fireInterval: number = 1.5; // Reduced from 3 to 1.5 seconds
     private projectileSpeed: number = -300; // Changed to negative to shoot left
+    private health: number = 2; // Now takes 2 hits to destroy
     
     constructor(x: number, y: number) {
         super(x, y, 90, 60, ObjectType.CannonTruck);
@@ -239,6 +266,12 @@ export class CannonTruck extends GameObject {
         }
         
         super.update(deltaTime);
+    }
+    
+    takeDamage(): boolean {
+        this.health--;
+        // Return true if destroyed (health <= 0)
+        return this.health <= 0;
     }
     
     render(ctx: CanvasRenderingContext2D): void {
