@@ -24,6 +24,7 @@ export class Game {
     private maxScrollSpeed: number = 600; // Increased from 300 to 600
     private scrollAcceleration: number = 150; // Increased from 50 to 150
     private gameStarted: boolean = false; // Track if game has started
+    private cannonTrucksSpawned: number = 0; // Track number of cannon trucks spawned
     
     constructor(canvasId: string) {
         this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -232,17 +233,17 @@ export class Game {
     private spawnEntities(deltaTime: number): void {
         this.spawnTimer += deltaTime;
         
-        // Spawn new entities every few seconds
-        if (this.spawnTimer > 2) {
+        // Spawn new entities at random intervals
+        if (this.spawnTimer >= 2) { // Every 2 seconds
             this.spawnTimer = 0;
             
-            // Randomly decide what to spawn
+            // Random chance to spawn different entity types
             const spawnChoice = Math.random();
             
             if (spawnChoice < 0.4) {
                 // Spawn an elk
                 const elk = new Elk(
-                    this.canvas.width + 50, 
+                    this.canvas.width + 50,
                     this.groundLevel - 70
                 );
                 this.entities.push(elk);
@@ -252,7 +253,15 @@ export class Game {
                     this.canvas.width + 50,
                     this.groundLevel - 60
                 );
+                
+                // After 15 cannon trucks, make them twice as big
+                if (this.cannonTrucksSpawned >= 15) {
+                    truck.setSize(180, 120); // Double the original size (90x60)
+                    console.log("Super cannon truck spawned!");
+                }
+                
                 this.entities.push(truck);
+                this.cannonTrucksSpawned++;
             }
         }
     }
@@ -592,6 +601,7 @@ export class Game {
         // Reset timers
         this.spawnTimer = 0;
         this.gameStarted = false;
+        this.cannonTrucksSpawned = 0;
     }
     
     private checkLightningHits(): void {
@@ -602,8 +612,8 @@ export class Game {
                 
                 // Check if lightning has hit the player
                 if (elk.hasActiveLightning() && this.isLightningHittingPlayer(elk)) {
-                    // Lightning hit! Take away 15 rocks
-                    const rocksLost = Math.min(15, this.player.getRockCount());
+                    // Lightning hit! Take away 7 rocks
+                    const rocksLost = Math.min(7, this.player.getRockCount());
                     this.player.addRocks(-rocksLost);
                     
                     // Mark the lightning as handled so we don't count it multiple times

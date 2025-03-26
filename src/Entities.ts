@@ -254,6 +254,12 @@ export class CannonTruck extends GameObject {
         this.velocity = new Vector2D(-100, 0);
     }
     
+    // Add method to change the size of the cannon truck
+    setSize(width: number, height: number): void {
+        this.width = width;
+        this.height = height;
+    }
+    
     update(deltaTime: number, addProjectile: (x: number, y: number, vx: number) => void): void {
         // Firing logic
         this.fireTimer += deltaTime;
