@@ -85,7 +85,7 @@ export class Player extends GameObject {
                 this.position.y + this.height / 2 - 5
             );
             // Lasers should shoot to the right from the back headlights
-            laser.velocity = new Vector2D(400, 0);
+            laser.velocity = new Vector2D(1200, 0); // Increased laser speed from 800 to 1200
             
             addEntity(laser);
             this.laserCooldown = this.laserCooldownMax;

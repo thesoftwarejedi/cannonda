@@ -21,8 +21,8 @@ export class Game {
     private cameraOffset: number = 0;
     private scrollSpeed: number = 100; // Base speed in pixels per second
     private minScrollSpeed: number = 50;
-    private maxScrollSpeed: number = 300;
-    private scrollAcceleration: number = 50; // How fast to change scroll speed
+    private maxScrollSpeed: number = 600; // Increased from 300 to 600
+    private scrollAcceleration: number = 150; // Increased from 50 to 150
     private gameStarted: boolean = false; // Track if game has started
     
     constructor(canvasId: string) {
