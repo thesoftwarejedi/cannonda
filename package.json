@@ -1,0 +1,28 @@
+{
+  "name": "cannonda",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "dev": "ts-node-dev --respawn src/index.ts",
+    "build": "tsc",
+    "serve": "node dist/index.js",
+    "clean": "rimraf dist",
+    "start:web": "lite-server"
+  },
+  "keywords": [
+    "game",
+    "typescript",
+    "canvas"
+  ],
+  "author": "",
+  "license": "ISC",
+  "description": "A TypeScript game development project",
+  "devDependencies": {
+    "lite-server": "^2.6.1",
+    "rimraf": "^5.0.10",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.8.2"
+  }
+}
