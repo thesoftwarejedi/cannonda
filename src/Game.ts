@@ -18,6 +18,8 @@ export class Game {
     private groundLevel: number;
     private ground: Ground;
     private entitiesToRemove: GameObject[] = [];
+    private cameraOffset: number = 0;
+    private scrollSpeed: number = 100; // pixels per second
     
     constructor(canvasId: string) {
         this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -36,11 +38,11 @@ export class Game {
         this.groundLevel = this.canvas.height - 50;
         
         // Create ground
-        this.ground = new Ground(0, this.groundLevel, this.canvas.width, 50);
+        this.ground = new Ground(0, this.groundLevel, this.canvas.width * 2, 50);
         this.entities.push(this.ground);
         
         // Create player
-        this.player = new Player(100, this.groundLevel - 50);
+        this.player = new Player(this.canvas.width * 0.3, this.groundLevel - 50);
         this.entities.push(this.player);
     }
     
@@ -52,7 +54,7 @@ export class Game {
         if (this.ground) {
             this.groundLevel = this.canvas.height - 50;
             this.ground.position.y = this.groundLevel;
-            this.ground.width = this.canvas.width;
+            this.ground.width = this.canvas.width * 2;
             
             // Update player position if it exists
             if (this.player) {
@@ -83,6 +85,9 @@ export class Game {
         // Clear the canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
+        // Update camera position
+        this.updateCamera(deltaTime);
+        
         // Update and spawn entities
         this.updateEntities(deltaTime);
         this.spawnEntities(deltaTime);
@@ -105,9 +110,18 @@ export class Game {
         }
     }
     
+    private updateCamera(deltaTime: number): void {
+        // Advance the camera forward (right to left scrolling)
+        this.cameraOffset += this.scrollSpeed * deltaTime;
+    }
+    
     private updateEntities(deltaTime: number): void {
         // Update player
         this.player.update(deltaTime, this.inputManager, this.addEntity.bind(this));
+        
+        // Keep player centered horizontally at about 30% of screen width
+        const targetX = this.canvas.width * 0.3;
+        this.player.position.x = targetX;
         
         // Check ground collision for player
         if (this.player.position.y + this.player.height >= this.groundLevel) {
@@ -136,11 +150,16 @@ export class Game {
                 entity.update(deltaTime);
             }
             
+            // Apply world scrolling to all entities except player
+            if (entity !== this.player) {
+                entity.position.x -= this.scrollSpeed * deltaTime;
+            }
+            
             // Remove entities that go off-screen
             if (
-                entity.position.x < -100 || 
-                entity.position.x > this.canvas.width + 100 ||
-                entity.position.y > this.canvas.height + 100
+                entity.position.x < -entity.width * 2 || 
+                entity.position.x > this.canvas.width + entity.width * 2 ||
+                entity.position.y > this.canvas.height + entity.height * 2
             ) {
                 this.markEntityForRemoval(entity);
                 continue;
@@ -209,12 +228,15 @@ export class Game {
     }
     
     private drawBackground(): void {
-        // Draw mountains
+        // Draw mountains with parallax effect (slower scrolling)
         this.ctx.fillStyle = '#95a5a6';
-        for (let i = 0; i < Math.ceil(this.canvas.width / 300) + 1; i++) {
+        for (let i = 0; i < Math.ceil(this.canvas.width / 300) + 2; i++) {
             const mountainWidth = 200 + i * 50;
             const mountainHeight = 120 + i * 30;
-            const x = (i * 300) % (this.canvas.width + 300) - 150;
+            
+            // Create parallax effect - mountains scroll at 40% of foreground speed
+            const parallaxOffset = this.cameraOffset * 0.4;
+            const x = ((i * 300) - (parallaxOffset % 300)) % (this.canvas.width + 300) - 150;
             
             this.ctx.beginPath();
             this.ctx.moveTo(x, this.groundLevel);
@@ -224,10 +246,12 @@ export class Game {
             this.ctx.fill();
         }
         
-        // Draw clouds
+        // Draw clouds with parallax effect (even slower)
         this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-        for (let i = 0; i < Math.ceil(this.canvas.width / 200) + 1; i++) {
-            const x = (i * 200) % (this.canvas.width + 200) - 100;
+        for (let i = 0; i < Math.ceil(this.canvas.width / 200) + 2; i++) {
+            // Clouds scroll at 20% of foreground speed
+            const parallaxOffset = this.cameraOffset * 0.2;
+            const x = ((i * 200) - (parallaxOffset % 200)) % (this.canvas.width + 200) - 100;
             const y = 50 + i * 20;
             this.drawCloud(x, y);
         }
@@ -316,13 +340,14 @@ export class Game {
         this.entities = [];
         this.entitiesToRemove = [];
         this.score = 0;
+        this.cameraOffset = 0;
         
         // Recreate ground
-        this.ground = new Ground(0, this.groundLevel, this.canvas.width, 50);
+        this.ground = new Ground(0, this.groundLevel, this.canvas.width * 2, 50);
         this.entities.push(this.ground);
         
         // Recreate player
-        this.player = new Player(100, this.groundLevel - 50);
+        this.player = new Player(this.canvas.width * 0.3, this.groundLevel - 50);
         this.entities.push(this.player);
         
         // Reset timers
