@@ -187,4 +187,28 @@ export class Player extends GameObject {
             this.rocksInTruck = 0;
         }
     }
+
+    public reset(x: number, y: number): void {
+        // Reset position
+        this.position.x = x;
+        this.position.y = y;
+        
+        // Reset velocity
+        this.velocity.x = 0;
+        this.velocity.y = 0;
+        
+        // Reset jump state
+        this.isJumping = false;
+        this.isOnGround = false;
+        this.jumpCount = 0;
+        
+        // Reset rocks
+        this.rocksInTruck = 30;
+        
+        // Reset laser cooldown
+        this.laserCooldown = 0;
+        
+        // Make sure the player is active
+        this.isActive = true;
+    }
 }

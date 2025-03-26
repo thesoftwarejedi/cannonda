@@ -20,6 +20,7 @@ export class Game {
     private entitiesToRemove: GameObject[] = [];
     private cameraOffset: number = 0;
     private scrollSpeed: number = 100; // pixels per second
+    private gameStarted: boolean = false; // Track if game has started
     
     constructor(canvasId: string) {
         this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -85,29 +86,64 @@ export class Game {
         // Clear the canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Update camera position
-        this.updateCamera(deltaTime);
-        
-        // Update and spawn entities
-        this.updateEntities(deltaTime);
-        this.spawnEntities(deltaTime);
-        
-        // Remove entities that were marked for removal
-        this.removeMarkedEntities();
-        
-        // Render everything
-        this.renderEntities();
+        if (!this.gameStarted) {
+            // Display start screen
+            this.renderStartScreen();
+            
+            // Check for any key press to start the game
+            if (this.inputManager.isKeyDown('Enter') || this.inputManager.isKeyDown(' ')) {
+                this.gameStarted = true;
+            }
+        } else {
+            // Update camera position
+            this.updateCamera(deltaTime);
+            
+            // Update and spawn entities
+            this.updateEntities(deltaTime);
+            this.spawnEntities(deltaTime);
+            
+            // Remove entities that were marked for removal
+            this.removeMarkedEntities();
+            
+            // Render everything
+            this.renderEntities();
+            
+            // Update score display
+            this.scoreElement.textContent = `Score: ${this.score}`;
+        }
         
         // Handle input post-update
         this.inputManager.clearEvents();
-        
-        // Update score display
-        this.scoreElement.textContent = `Score: ${this.score}`;
         
         // Continue game loop if running
         if (this.running) {
             requestAnimationFrame(this.gameLoop.bind(this));
         }
+    }
+    
+    private renderStartScreen(): void {
+        // Draw background (sky)
+        this.ctx.fillStyle = '#87CEEB';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Draw title
+        this.ctx.fillStyle = '#e74c3c';
+        this.ctx.font = 'bold 72px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('CANNONDA', this.canvas.width / 2, this.canvas.height / 3);
+        
+        // Draw instructions
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = '24px Arial';
+        this.ctx.fillText('Press SPACE or ENTER to start', this.canvas.width / 2, this.canvas.height / 2);
+        
+        // Draw game controls
+        this.ctx.font = '18px Arial';
+        this.ctx.fillStyle = '#333';
+        this.ctx.fillText('Controls:', this.canvas.width / 2, this.canvas.height * 0.6);
+        this.ctx.fillText('Left/Right: Move | Up: Jump/Double-Jump | Down: Shoot', 
+                          this.canvas.width / 2, this.canvas.height * 0.65);
     }
     
     private updateCamera(deltaTime: number): void {
@@ -344,21 +380,22 @@ export class Game {
     }
     
     private reset(): void {
-        // Reset the game state
-        this.entities = [];
+        // Clear all entities except player and ground
+        this.entities = [this.player, this.ground];
         this.entitiesToRemove = [];
+        
+        // Reset player
+        this.player.reset(this.canvas.width * 0.3, this.groundLevel - 50);
+        
+        // Reset score
         this.score = 0;
+        this.scoreElement.textContent = `Score: ${this.score}`;
+        
+        // Reset camera
         this.cameraOffset = 0;
-        
-        // Recreate ground
-        this.ground = new Ground(0, this.groundLevel, this.canvas.width * 2, 50);
-        this.entities.push(this.ground);
-        
-        // Recreate player
-        this.player = new Player(this.canvas.width * 0.3, this.groundLevel - 50);
-        this.entities.push(this.player);
         
         // Reset timers
         this.spawnTimer = 0;
+        this.gameStarted = false;
     }
 }
