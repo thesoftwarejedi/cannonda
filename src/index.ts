@@ -27,11 +27,11 @@ function showInstructions(): void {
     instructions.style.textAlign = 'center';
     
     instructions.innerHTML = `
-        <h2>Dump Truck Adventure</h2>
+        <h2>Cannonda</h2>
         <p>Drive your dump truck filled with rocks backwards!</p>
         <ul style="text-align: left;">
             <li>Left/Right Arrow: Move your truck (reversed controls)</li>
-            <li>Space: Jump over elk</li>
+            <li>Up Arrow: Jump over elk (double-jump capable)</li>
             <li>Down Arrow: Shoot lasers from your back headlights</li>
         </ul>
         <p>Avoid cannon trucks and their projectiles!</p>
