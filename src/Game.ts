@@ -17,7 +17,7 @@ export class Game {
     private spawnTimer: number = 0;
     private groundLevel: number;
     private ground: Ground;
-    private entitiesToRemove: GameObject[] = []; // Add a list to track entities to remove
+    private entitiesToRemove: GameObject[] = [];
     
     constructor(canvasId: string) {
         this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -26,6 +26,13 @@ export class Game {
         this.entities = [];
         this.entitiesToRemove = [];
         this.scoreElement = document.getElementById('score-display') as HTMLElement;
+        
+        // Set canvas to window size
+        this.resizeCanvas();
+        
+        // Setup resize listener
+        window.addEventListener('resize', this.resizeCanvas.bind(this));
+        
         this.groundLevel = this.canvas.height - 50;
         
         // Create ground
@@ -35,6 +42,25 @@ export class Game {
         // Create player
         this.player = new Player(100, this.groundLevel - 50);
         this.entities.push(this.player);
+    }
+    
+    private resizeCanvas(): void {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        
+        // Update ground level when resizing
+        if (this.ground) {
+            this.groundLevel = this.canvas.height - 50;
+            this.ground.position.y = this.groundLevel;
+            this.ground.width = this.canvas.width;
+            
+            // Update player position if it exists
+            if (this.player) {
+                this.player.position.y = this.groundLevel - this.player.height;
+            }
+        } else {
+            this.groundLevel = this.canvas.height - 50;
+        }
     }
     
     public start(): void {
@@ -185,10 +211,10 @@ export class Game {
     private drawBackground(): void {
         // Draw mountains
         this.ctx.fillStyle = '#95a5a6';
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < Math.ceil(this.canvas.width / 300) + 1; i++) {
             const mountainWidth = 200 + i * 50;
             const mountainHeight = 120 + i * 30;
-            const x = (i * 300) % this.canvas.width;
+            const x = (i * 300) % (this.canvas.width + 300) - 150;
             
             this.ctx.beginPath();
             this.ctx.moveTo(x, this.groundLevel);
@@ -200,8 +226,8 @@ export class Game {
         
         // Draw clouds
         this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-        for (let i = 0; i < 5; i++) {
-            const x = (i * 200) % this.canvas.width;
+        for (let i = 0; i < Math.ceil(this.canvas.width / 200) + 1; i++) {
+            const x = (i * 200) % (this.canvas.width + 200) - 100;
             const y = 50 + i * 20;
             this.drawCloud(x, y);
         }

@@ -16,27 +16,45 @@
             overflow: hidden;
         }
         canvas {
-            border: 3px solid #333;
+            display: block;
+            width: 100vw;
+            height: 100vh;
             background-color: #87CEEB;
         }
         #game-container {
             position: relative;
+            width: 100vw;
+            height: 100vh;
         }
         #score-display {
             position: absolute;
-            top: 10px;
-            left: 10px;
+            top: 20px;
+            left: 20px;
             color: white;
             font-family: 'Arial', sans-serif;
-            font-size: 18px;
+            font-size: 24px;
             z-index: 100;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            font-family: 'Arial', sans-serif;
+            font-size: 16px;
+            z-index: 100;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
         }
     </style>
 </head>
 <body>
     <div id="game-container">
         <div id="score-display">Score: 0</div>
-        <canvas id="game-canvas" width="800" height="400"></canvas>
+        <div id="instructions">
+            Controls: Left/Right Arrows to move, Space to jump, Down Arrow to shoot
+        </div>
+        <canvas id="game-canvas"></canvas>
     </div>
     <script src="bundle.js"></script>
 </body>
