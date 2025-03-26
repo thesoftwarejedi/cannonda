@@ -36,6 +36,7 @@ export class Elk extends GameObject {
             if (this.attackTimer >= this.attackCooldown) {
                 this.attackTimer = 0;
                 this.shootLightning(playerPosition);
+                console.log("Elk shooting lightning at player!");
             }
         }
         
@@ -52,6 +53,7 @@ export class Elk extends GameObject {
         // If all lightning particles are gone, lightning is no longer active
         if (this.lightningParticles.length === 0) {
             this.lightningActive = false;
+            this.hasLightningHit = false; // Reset hit state when lightning disappears
         }
         
         super.update(deltaTime);

@@ -74,6 +74,7 @@ export class Game {
             this.running = true;
             this.lastTime = performance.now();
             requestAnimationFrame(this.gameLoop.bind(this));
+            console.log("Game started and running");
         }
     }
     
@@ -633,9 +634,11 @@ export class Game {
             this.player.position.y + this.player.height * 0.5
         );
         
-        // Check if the lightning is active and the player is in the path
+        // Debug lightning detection
+        console.log(`Lightning check: Elk at ${elk.position.x}, Player at ${playerCenter.x}, Lightning active: ${elk.isLightningActive()}`);
+        
+        // Make the hit detection more generous - lightning has a wide area effect
         return elk.isLightningActive() && 
-               playerCenter.x > elk.position.x && 
-               playerCenter.x < elkPosition.x + 300; // Lightning range
+               Math.abs(playerCenter.x - elk.position.x) < 400; // Increased range and simplified check
     }
 }
