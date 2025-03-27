@@ -28,6 +28,11 @@ export class Game {
     private cannonTrucksDestroyed: number = 0; // Track number of cannon trucks destroyed
     private reachedFernie: boolean = false; // Track if player has reached Fernie Alpine Ski Resort
     private playerDead: boolean = false; // Track if player has died from elk collision
+    private explosionActive: boolean = false; // Track if explosion animation is active
+    private explosionTimer: number = 0; // Timer for explosion animation
+    private explosionDuration: number = 1.0; // Duration of explosion animation in seconds
+    private explosionParticles: {x: number, y: number, vx: number, vy: number, size: number, color: string, lifetime: number}[] = [];
+    private frameTime: number = 0;
     
     constructor(canvasId: string) {
         this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -95,6 +100,7 @@ export class Game {
         
         // Calculate delta time
         const deltaTime = (timestamp - this.lastTime) / 1000; // convert to seconds
+        this.frameTime = deltaTime; // Store for explosion animation
         this.lastTime = timestamp;
         
         // Clear the canvas
@@ -108,6 +114,19 @@ export class Game {
             }
             // Draw start screen
             this.renderStartScreen();
+        } else if (this.explosionActive) {
+            // Show explosion animation
+            // Draw the background
+            this.renderEntities(true); // Pass true to hide the player
+            
+            // Render explosion animation
+            this.renderExplosion();
+            
+            // After explosion ends, show game over
+            if (this.explosionTimer >= this.explosionDuration) {
+                this.explosionActive = false;
+                this.playerDead = true;
+            }
         } else if (this.playerDead) {
             // Show game over screen when player hits an elk
             this.renderGameOverScreen();
@@ -301,7 +320,7 @@ export class Game {
         this.entities.push(rock);
     }
     
-    private renderEntities(): void {
+    private renderEntities(hidePlayer: boolean = false): void {
         // Draw background (sky)
         this.ctx.fillStyle = this.reachedFernie ? '#CAEAFA' : '#87CEEB'; // Lighter blue for Fernie
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -326,7 +345,7 @@ export class Game {
         
         // Render all game entities
         for (const entity of this.entities) {
-            if (entity.isActive) {
+            if (entity.isActive && (entity !== this.player || !hidePlayer)) {
                 entity.render(this.ctx);
             }
         }
@@ -522,10 +541,19 @@ export class Game {
         // Handle collisions between the player and the entity
         if (this.player.intersects(entity)) {
             if (entity.type === ObjectType.Elk) {
-                // Hitting an elk ends the game and shows game over screen
-                this.playerDead = true;
+                // Hitting an elk creates an explosion and ends the game
                 entity.isActive = false;
                 this.markEntityForRemoval(entity);
+                
+                // Create explosion effect
+                this.createExplosion();
+                
+                // Make the player invisible during explosion
+                this.player.isActive = false;
+                
+                // Set explosion active flag
+                this.explosionActive = true;
+                this.explosionTimer = 0;
                 
                 // Make all other elk angry when you hit one of them
                 this.makeAllElkAngry();
@@ -623,6 +651,7 @@ export class Game {
         // Reset player - ensure wheels are properly positioned on the ground
         const wheelRadius = this.player.height * 0.2; // Wheel radius is 20% of player height
         this.player.reset(this.canvas.width * 0.3, this.groundLevel - this.player.height - wheelRadius);
+        this.player.isActive = true; // Make player visible again
         
         // Reset score
         this.score = 0;
@@ -638,6 +667,11 @@ export class Game {
         this.cannonTrucksDestroyed = 0;
         this.playerDead = false;  // Reset player dead state
         this.reachedFernie = false;  // Reset reached Fernie state
+        
+        // Reset explosion state
+        this.explosionActive = false;
+        this.explosionTimer = 0;
+        this.explosionParticles = [];
     }
     
     private checkLightningHits(): void {
@@ -1821,5 +1855,139 @@ export class Game {
         this.ctx.beginPath();
         this.ctx.arc(x + width * 0.85, y + height * 0.2, glowRadius, 0, Math.PI * 2);
         this.ctx.fill();
+    }
+    
+    private renderExplosion(): void {
+        if (!this.ctx) return;
+        
+        // Update explosion timer
+        this.explosionTimer += this.frameTime;
+        
+        // Draw explosion flash
+        const flashOpacity = Math.max(0, 1 - this.explosionTimer / (this.explosionDuration * 0.3));
+        if (flashOpacity > 0) {
+            this.ctx.save();
+            this.ctx.globalAlpha = flashOpacity;
+            this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.restore();
+        }
+        
+        // Draw explosion shockwave
+        const shockwaveSize = this.explosionTimer * 800; // Expand over time
+        const shockwaveOpacity = Math.max(0, 1 - this.explosionTimer / (this.explosionDuration * 0.7));
+        if (shockwaveOpacity > 0) {
+            const playerPosX = this.player.position.x;
+            const playerPosY = this.player.position.y;
+            const centerX = playerPosX - this.cameraOffset;
+            const centerY = playerPosY;
+            
+            this.ctx.save();
+            this.ctx.globalAlpha = shockwaveOpacity;
+            this.ctx.strokeStyle = '#FF6600';
+            this.ctx.lineWidth = 10;
+            this.ctx.beginPath();
+            this.ctx.arc(centerX, centerY, shockwaveSize, 0, Math.PI * 2);
+            this.ctx.stroke();
+            this.ctx.restore();
+        }
+        
+        // Draw explosion particles
+        for (let i = 0; i < this.explosionParticles.length; i++) {
+            const particle = this.explosionParticles[i];
+            
+            // Update particle position
+            particle.x += particle.vx * this.frameTime;
+            particle.y += particle.vy * this.frameTime;
+            
+            // Update lifetime
+            particle.lifetime -= this.frameTime;
+            
+            // Draw particle
+            if (particle.lifetime > 0) {
+                const alpha = Math.min(1, particle.lifetime * 2);
+                const size = particle.size * alpha; // Particles shrink as they fade
+                
+                this.ctx.save();
+                this.ctx.globalAlpha = alpha;
+                this.ctx.fillStyle = particle.color;
+                this.ctx.translate(-this.cameraOffset, 0);
+                this.ctx.fillRect(particle.x - size/2, particle.y - size/2, size, size);
+                this.ctx.restore();
+            }
+        }
+        
+        // Remove dead particles
+        this.explosionParticles = this.explosionParticles.filter(p => p.lifetime > 0);
+    }
+    
+    private createExplosion(): void {
+        if (!this.player) return;
+        
+        // Create explosion particles centered on the player
+        const centerX = this.player.position.x + this.player.width / 2;
+        const centerY = this.player.position.y + this.player.height / 2;
+        
+        // Create truck debris pieces
+        const numDebris = 30;
+        for (let i = 0; i < numDebris; i++) {
+            const angle = Math.random() * Math.PI * 2; // Random angle
+            const speed = 100 + Math.random() * 300; // Random speed
+            const size = 3 + Math.random() * 7; // Random size 
+            
+            this.explosionParticles.push({
+                x: centerX,
+                y: centerY,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                size,
+                color: '#e74c3c', // Red for truck pieces
+                lifetime: 0.5 + Math.random() * 1.5
+            });
+        }
+        
+        // Create fire/spark particles
+        const numParticles = 70;
+        for (let i = 0; i < numParticles; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 50 + Math.random() * 200;
+            const size = 2 + Math.random() * 5;
+            
+            // Choose random color from fire palette
+            const colors = ['#ff5722', '#ff9800', '#ffeb3b', '#ffc107'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            
+            this.explosionParticles.push({
+                x: centerX,
+                y: centerY,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                size,
+                color,
+                lifetime: 0.5 + Math.random() * 0.5
+            });
+        }
+        
+        // Add some smoke particles that rise upward
+        const numSmoke = 20;
+        for (let i = 0; i < numSmoke; i++) {
+            const angle = -Math.PI/2 + (Math.random() * 0.8 - 0.4); // Mostly upward
+            const speed = 30 + Math.random() * 70; // Slower than debris
+            const size = 8 + Math.random() * 15; // Larger particles
+            
+            // Gray smoke with varying opacity
+            const grayValue = 100 + Math.floor(Math.random() * 100);
+            const color = `rgb(${grayValue},${grayValue},${grayValue})`;
+            
+            this.explosionParticles.push({
+                x: centerX,
+                y: centerY,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                size,
+                color,
+                lifetime: 1.0 + Math.random() * 1.0
+            });
+        }
     }
 }
