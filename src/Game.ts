@@ -237,13 +237,13 @@ export class Game {
     
     private updateEntities(deltaTime: number): void {
         // Check if we've reached Fernie Alpine Ski Resort
-        if (this.cannonTrucksDestroyed >= 5 && !this.reachedFernie) {
+        if (this.cannonTrucksDestroyed >= 25 && !this.reachedFernie) {
             this.reachedFernie = true;
             
             // Don't stop the game, just change state to show victory screen
             // this.running = false; // REMOVED THIS LINE
             
-            // Show Fernie Alpine Ski Resort
+            // Show Fernie Alpine Ski Resort 
             console.log("VICTORY! Reached Fernie Alpine Resort!");
         }
         
@@ -306,21 +306,21 @@ export class Game {
         this.spawnTimer += deltaTime;
         
         // Spawn new entities at random intervals
-        if (this.spawnTimer >= 2) { // Every 2 seconds
+        if (this.spawnTimer >= 1.5) { // Every 1.5 seconds instead of 2
             this.spawnTimer = 0;
             
             // Random chance to spawn different entity types
             const spawnChoice = Math.random();
             
             if (spawnChoice < 0.4) {
-                // Spawn an elk
+                // Spawn an elk (40% chance)
                 const elk = new Elk(
                     this.canvas.width + 50,
                     this.groundLevel - 70
                 );
                 this.entities.push(elk);
-            } else if (spawnChoice < 0.7) {
-                // Spawn a cannon truck
+            } else if (spawnChoice < 0.8) {
+                // Spawn a cannon truck (40% chance)
                 const truck = new CannonTruck(
                     this.canvas.width + 50,
                     this.groundLevel - 60
@@ -859,62 +859,62 @@ export class Game {
     }
     
     private drawVictoryBanner(): void {
-        // Draw a large decorative banner across the top
-        const bannerY = 100;
+        // Draw a smaller decorative banner across the top
+        const bannerY = 300;
         
         // Create gradient for banner
-        const bannerGradient = this.ctx.createLinearGradient(0, bannerY - 60, 0, bannerY + 60);
+        const bannerGradient = this.ctx.createLinearGradient(0, bannerY - 40, 0, bannerY + 40);
         bannerGradient.addColorStop(0, '#D4AF37'); // Gold
         bannerGradient.addColorStop(0.5, '#FFF8DC'); // Light gold
         bannerGradient.addColorStop(1, '#D4AF37'); // Gold
         
-        // Banner background
+        // Banner background - smaller size
         this.ctx.fillStyle = bannerGradient;
-        this.ctx.fillRect(this.canvas.width * 0.1, bannerY - 60, this.canvas.width * 0.8, 120);
+        this.ctx.fillRect(this.canvas.width * 0.29, bannerY - 40, this.canvas.width * 0.43, 80);
         
         // Banner border
         this.ctx.strokeStyle = '#8B4513'; // Brown border
         this.ctx.lineWidth = 5;
-        this.ctx.strokeRect(this.canvas.width * 0.1, bannerY - 60, this.canvas.width * 0.8, 120);
+        this.ctx.strokeRect(this.canvas.width * 0.29, bannerY - 40, this.canvas.width * 0.43, 80);
         
         // Victory text with shadow
-        this.ctx.font = 'bold 60px Arial';
+        this.ctx.font = 'bold 30px Arial'; // Smaller font
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         
         // Text shadow
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        this.ctx.fillText('VICTORY!', this.canvas.width / 2 + 4, bannerY + 4);
+        this.ctx.fillText('Congratulations you made it to Fernie Alpine Ski Resort', this.canvas.width / 2 + 2, bannerY - 10);
         
         // Main text with gradient
         const textGradient = this.ctx.createLinearGradient(
-            this.canvas.width / 2 - 150, bannerY,
-            this.canvas.width / 2 + 150, bannerY
+            this.canvas.width / 2 - 200, bannerY,
+            this.canvas.width / 2 + 200, bannerY
         );
         textGradient.addColorStop(0, '#8B0000'); // Dark red
         textGradient.addColorStop(0.5, '#FF0000'); // Bright red
         textGradient.addColorStop(1, '#8B0000'); // Dark red
         
-        this.ctx.fillStyle = textGradient;
-        this.ctx.fillText('VICTORY!', this.canvas.width / 2, bannerY);
+        this.ctx.fillStyle = textGradient; 
+        this.ctx.fillText('Congratulations you made it to Fernie Alpine Ski Resort', this.canvas.width / 2, bannerY - 10);
         
         // Display stats
-        this.ctx.font = 'bold 24px Arial';
+        this.ctx.font = 'bold 20px Arial'; // Smaller font
         this.ctx.fillStyle = '#333';
         
         // Player stats
         this.ctx.fillText(
             `Cannon Trucks Destroyed: ${this.cannonTrucksDestroyed} | Remaining Rocks: ${this.player.getRockCount()}`,
             this.canvas.width / 2,
-            bannerY + 50
+            bannerY + 25
         );
         
         // Decorative stars
         for (let i = 0; i < 5; i++) {
             this.drawStar(
-                this.canvas.width * 0.2 + (this.canvas.width * 0.6 * i / 4),
-                bannerY - 40,
-                15,
+                this.canvas.width * 0.25 + (this.canvas.width * 0.5 * i / 4),
+                bannerY - 30,
+                12,
                 '#FFD700'
             );
         }
