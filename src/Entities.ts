@@ -244,9 +244,9 @@ interface LightningParticle {
 
 export class CannonTruck extends GameObject {
     private fireTimer: number = 1.5; // Start halfway through cooldown so first shot comes sooner
-    private fireInterval: number = 1.5; // Reduced from 3 to 1.5 seconds
+    protected fireInterval: number = 1.5; // Reduced from 3 to 1.5 seconds
     private projectileSpeed: number = -300; // Changed to negative to shoot left
-    private health: number = 1; // Changed to 1 hit to destroy (was 2)
+    protected health: number = 1; // Changed to 1 hit to destroy (was 2)
     
     constructor(x: number, y: number) {
         super(x, y, 90, 60, ObjectType.CannonTruck);
@@ -339,6 +339,118 @@ export class CannonTruck extends GameObject {
             Math.PI * 2
         );
         ctx.fill();
+        
+        ctx.restore();
+    }
+}
+
+export class BossCannonTruck extends CannonTruck {
+    constructor(x: number, y: number) {
+        super(x, y);
+        // Make the boss truck larger
+        this.setSize(180, 120); // Double the original size (90x60)
+        // Set 5 health points
+        this.health = 5;
+        // Make it slower
+        this.velocity = new Vector2D(-80, 0);
+        // Faster firing rate
+        this.fireInterval = 1.0;
+    }
+    
+    // Override the takeDamage method to show health status
+    takeDamage(): boolean {
+        this.health--;
+        console.log(`Boss cannon truck hit! Health: ${this.health}`);
+        // Return true if destroyed (health <= 0)
+        return this.health <= 0;
+    }
+    
+    // Override the render method to make the boss truck look more intimidating
+    render(ctx: CanvasRenderingContext2D): void {
+        ctx.save();
+        
+        // Draw truck base (looks like a bigger, meaner logging truck)
+        ctx.fillStyle = '#800000'; // Dark red
+        ctx.fillRect(this.position.x, this.position.y, this.width, this.height * 0.7);
+        
+        // Draw truck cabin
+        ctx.fillStyle = '#600000'; // Darker red
+        ctx.fillRect(
+            this.position.x, 
+            this.position.y, 
+            this.width * 0.3, 
+            this.height * 0.5
+        );
+        
+        // Draw logs (cannon)
+        ctx.fillStyle = '#5D4037'; // Darker brown for logs
+        for (let i = 0; i < 4; i++) { // More logs
+            ctx.fillRect(
+                this.position.x + this.width * 0.35, 
+                this.position.y + i * (this.height * 0.12), 
+                this.width * 0.6, 
+                this.height * 0.1
+            );
+        }
+        
+        // Draw double cannon barrels
+        ctx.fillStyle = '#444';
+        // Upper cannon
+        ctx.fillRect(
+            this.position.x - this.width * 0.25,
+            this.position.y + this.height * 0.15,
+            this.width * 0.35,
+            this.height * 0.12
+        );
+        // Lower cannon
+        ctx.fillRect(
+            this.position.x - this.width * 0.25,
+            this.position.y + this.height * 0.35,
+            this.width * 0.35,
+            this.height * 0.12
+        );
+        
+        // Draw wheels
+        ctx.fillStyle = '#333';
+        ctx.beginPath();
+        ctx.arc(
+            this.position.x + this.width * 0.2, 
+            this.position.y + this.height * 0.85, 
+            this.height * 0.15, 
+            0, 
+            Math.PI * 2
+        );
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.arc(
+            this.position.x + this.width * 0.8, 
+            this.position.y + this.height * 0.85, 
+            this.height * 0.15, 
+            0, 
+            Math.PI * 2
+        );
+        ctx.fill();
+        
+        // Draw health indicator
+        const healthBarWidth = this.width * 0.8;
+        const healthBarHeight = 10;
+        // Background
+        ctx.fillStyle = '#333';
+        ctx.fillRect(
+            this.position.x + this.width * 0.1,
+            this.position.y - 20,
+            healthBarWidth,
+            healthBarHeight
+        );
+        // Health remaining
+        ctx.fillStyle = '#f00';
+        ctx.fillRect(
+            this.position.x + this.width * 0.1,
+            this.position.y - 20,
+            healthBarWidth * (this.health / 5),
+            healthBarHeight
+        );
         
         ctx.restore();
     }

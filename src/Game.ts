@@ -1,6 +1,6 @@
 import { InputManager, Keys } from './Input';
 import { Player, Laser } from './Player';
-import { Elk, CannonTruck, Rock, Ground } from './Entities';
+import { Elk, CannonTruck, BossCannonTruck, Rock, Ground } from './Entities';
 import { GameObject, ObjectType } from './GameObject';
 import { Vector2D } from './Vector2D';
 
@@ -40,6 +40,8 @@ export class Game {
     private screenShakeTimer: number = 0;
     private screenShakeOffsetX: number = 0;
     private screenShakeOffsetY: number = 0;
+    private bossCannonTruckSpawned: boolean = false; // Track if boss cannon truck has spawned
+    private bossCannonTruckDestroyed: boolean = false; // Track if boss cannon truck has been destroyed
     
     constructor(canvasId: string) {
         this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -170,7 +172,9 @@ export class Game {
             this.removeMarkedEntities();
             
             // Update score display
-            this.scoreElement.textContent = `Score: ${this.score} | Rocks: ${this.player.getRockCount()}`;
+            if (this.scoreElement) {
+                this.scoreElement.textContent = `Score: ${this.score} | Rocks: ${this.player.getRockCount()}`;
+            }
             
             // Check for lightning hits
             this.checkLightningHits();
@@ -247,6 +251,23 @@ export class Game {
             console.log("VICTORY! Reached Fernie Alpine Resort!");
         }
         
+        // Check if the boss cannon truck has passed the player without being destroyed
+        if (this.bossCannonTruckSpawned && !this.bossCannonTruckDestroyed) {
+            // Find the boss truck in entities
+            for (const entity of this.entities) {
+                if (entity instanceof BossCannonTruck) {
+                    // If the boss truck has passed the player (moved off screen to the left)
+                    if (entity.position.x + entity.width < 0) {
+                        // Game over!
+                        console.log("GAME OVER! Boss cannon truck escaped!");
+                        alert("GAME OVER! The boss escaped. You failed to defeat the mega cannon truck!");
+                        this.reset();
+                        return;
+                    }
+                }
+            }
+        }
+        
         // Update player
         this.player.update(deltaTime, this.inputManager, this.addEntity.bind(this));
         
@@ -304,6 +325,25 @@ export class Game {
     
     private spawnEntities(deltaTime: number): void {
         this.spawnTimer += deltaTime;
+        
+        // Check if we should spawn the boss truck (after 20 regular trucks destroyed)
+        if (this.cannonTrucksDestroyed >= 20 && !this.bossCannonTruckSpawned && !this.bossCannonTruckDestroyed) {
+            // Spawn the boss cannon truck
+            console.log("Spawning BOSS cannon truck!");
+            const bossTruck = new BossCannonTruck(
+                this.canvas.width + 50,
+                this.groundLevel - 60
+            );
+            
+            this.entities.push(bossTruck);
+            this.bossCannonTruckSpawned = true;
+            return; // Don't spawn any other entities this cycle
+        }
+        
+        // Don't spawn anything while the boss is on screen
+        if (this.bossCannonTruckSpawned && !this.bossCannonTruckDestroyed) {
+            return;
+        }
         
         // Spawn new entities at random intervals
         if (this.spawnTimer >= 1.5) { // Every 1.5 seconds instead of 2
@@ -624,11 +664,28 @@ export class Game {
                             this.markEntityForRemoval(entity);
                             
                             if (target.type === ObjectType.CannonTruck) {
-                                // Since cannon trucks now die in one hit, we can simplify this logic
-                                target.isActive = false;
-                                this.markEntityForRemoval(target);
-                                this.player.addRocks(5);
-                                this.cannonTrucksDestroyed++;
+                                // Check if it's a boss cannon truck by checking if it's a BossCannonTruck instance
+                                const isBossCannonTruck = target instanceof BossCannonTruck;
+                                
+                                // Reduce health and check if destroyed
+                                const isDestroyed = (target as CannonTruck).takeDamage();
+                                
+                                if (isDestroyed) {
+                                    target.isActive = false;
+                                    this.markEntityForRemoval(target);
+                                    this.player.addRocks(isBossCannonTruck ? 20 : 5); // More rocks for boss
+                                    this.cannonTrucksDestroyed++;
+                                    
+                                    // If it was the boss, mark it as destroyed
+                                    if (isBossCannonTruck) {
+                                        this.bossCannonTruckDestroyed = true;
+                                        console.log("BOSS CANNON TRUCK DESTROYED!");
+                                        
+                                        // Create a big explosion for the boss
+                                        this.createExplosion(target.position.x, target.position.y);
+                                        this.shakeScreen(2.0); // Stronger screen shake for boss
+                                    }
+                                }
                             } else {
                                 // Rocks are destroyed in one hit
                                 target.isActive = false;
@@ -639,11 +696,6 @@ export class Game {
                 }
             }
         }
-        
-        // Update score display
-        if (this.scoreElement) {
-            this.scoreElement.textContent = `Score: ${this.score} | Rocks: ${this.player.getRockCount()}`;
-        }
     }
     
     private makeAllElkAngry(): void {
@@ -652,7 +704,7 @@ export class Game {
             if (entity.type === ObjectType.Elk && entity.isActive) {
                 (entity as Elk).setAngry(true);
             }
-        }
+        } 
     }
     
     private markEntityForRemoval(entity: GameObject): void {
@@ -712,7 +764,7 @@ export class Game {
                 // Check if lightning has hit the player
                 if (elk.hasActiveLightning() && this.isLightningHittingPlayer(elk)) {
                     // Lightning hit! Take away 2 rocks
-                    const rocksLost = Math.min(2, this.player.getRockCount());
+                    const rocksLost = Math.min(10, this.player.getRockCount());
                     this.player.addRocks(-rocksLost);
                     
                     // Mark the lightning as handled so we don't count it multiple times
@@ -2070,12 +2122,9 @@ export class Game {
         }
     }
     
-    private createExplosion(): void {
-        if (!this.player) return;
-        
-        // Create explosion particles centered on the player
-        const centerX = this.player.position.x + this.player.width / 2;
-        const centerY = this.player.position.y + this.player.height / 2;
+    private createExplosion(x?: number, y?: number): void {
+        const centerX = x || (this.player ? this.player.position.x + this.player.width / 2 : 0);
+        const centerY = y || (this.player ? this.player.position.y + this.player.height / 2 : 0);
         
         // Create more truck debris pieces for a bigger explosion
         const numDebris = 60; 
@@ -2116,72 +2165,15 @@ export class Game {
                 lifetime: 0.7 + Math.random() * 0.8 
             });
         }
-        
-        // Add lava particles that spread outward and fall
-        const numLava = 80; 
-        for (let i = 0; i < numLava; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = 50 + Math.random() * 200;
-            const size = 6 + Math.random() * 12; 
-            
-            // Lava colors (red-orange gradient)
-            const lavaColors = ['#bb0000', '#cc3300', '#dd4400', '#ee5500', '#ff6600'];
-            const color = lavaColors[Math.floor(Math.random() * lavaColors.length)];
-            
-            this.explosionParticles.push({
-                x: centerX,
-                y: centerY,
-                vx: Math.cos(angle) * speed,
-                vy: Math.sin(angle) * speed + 200, 
-                size,
-                color,
-                lifetime: 1.2 + Math.random() * 1.0 
-            });
-        }
-        
-        // Add some smoke particles that rise upward
-        const numSmoke = 40; 
-        for (let i = 0; i < numSmoke; i++) {
-            const angle = -Math.PI/2 + (Math.random() * 0.8 - 0.4); 
-            const speed = 40 + Math.random() * 80; 
-            const size = 10 + Math.random() * 20; 
-            
-            // Dark smoke with varying opacity
-            const grayValue = 60 + Math.floor(Math.random() * 80); 
-            const color = `rgb(${grayValue},${grayValue},${grayValue})`;
-            
-            this.explosionParticles.push({
-                x: centerX,
-                y: centerY,
-                vx: Math.cos(angle) * speed,
-                vy: Math.sin(angle) * speed,
-                size,
-                color,
-                lifetime: 1.5 + Math.random() * 1.5 
-            });
-        }
-        
-        // Add explosion ring
-        for (let i = 0; i < 36; i++) {
-            const angle = (i / 36) * Math.PI * 2;
-            const speed = 300;
-            const size = 8;
-            
-            this.explosionParticles.push({
-                x: centerX,
-                y: centerY,
-                vx: Math.cos(angle) * speed,
-                vy: Math.sin(angle) * speed,
-                size,
-                color: '#ffdd00', 
-                lifetime: 0.5
-            });
-        }
+
+        // Set explosion active flag and reset timer
+        this.explosionActive = true;
+        this.explosionTimer = 0;
     }
     
-    private shakeScreen(): void {
+    private shakeScreen(intensity: number = 1.0): void {
         this.screenShakeActive = true;
-        this.screenShakeIntensity = 20; // Maximum shake amount in pixels
+        this.screenShakeIntensity = intensity * 20; // Maximum shake amount in pixels
         this.screenShakeDuration = 1.5; // Seconds to shake for
         this.screenShakeTimer = 0;
     }
