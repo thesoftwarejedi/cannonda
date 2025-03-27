@@ -247,6 +247,8 @@ export class CannonTruck extends GameObject {
     protected fireInterval: number = 1.5; // Reduced from 3 to 1.5 seconds
     private projectileSpeed: number = -300; // Changed to negative to shoot left
     protected health: number = 1; // Changed to 1 hit to destroy (was 2)
+    protected isAboutToFire: boolean = false; // Whether the truck is about to fire (for visual effect)
+    protected preFireTime: number = 0.3; // How long before firing the truck glows red
     
     constructor(x: number, y: number) {
         super(x, y, 90, 60, ObjectType.CannonTruck);
@@ -261,8 +263,15 @@ export class CannonTruck extends GameObject {
     }
     
     update(deltaTime: number, addProjectile: (x: number, y: number, vx: number) => void): void {
-        // Firing logic
+        // Update firing state
         this.fireTimer += deltaTime;
+        
+        // Check if we're about to fire (but not already in pre-fire state)
+        if (!this.isAboutToFire && this.fireTimer >= this.fireInterval - this.preFireTime) {
+            this.isAboutToFire = true;
+        }
+        
+        // Firing logic
         if (this.fireTimer >= this.fireInterval) {
             // Fire a cannonball
             addProjectile(
@@ -271,6 +280,7 @@ export class CannonTruck extends GameObject {
                 this.projectileSpeed
             );
             this.fireTimer = 0;
+            this.isAboutToFire = false; // Reset firing state
         }
         
         super.update(deltaTime);
@@ -286,11 +296,11 @@ export class CannonTruck extends GameObject {
         ctx.save();
         
         // Draw truck base (looks like a logging truck)
-        ctx.fillStyle = '#34495e'; // Dark blue
+        ctx.fillStyle = this.isAboutToFire ? '#e74c3c' : '#34495e'; // Red when about to fire, normal blue otherwise
         ctx.fillRect(this.position.x, this.position.y, this.width, this.height * 0.7);
         
         // Draw truck cabin
-        ctx.fillStyle = '#2c3e50'; // Darker blue
+        ctx.fillStyle = this.isAboutToFire ? '#c0392b' : '#2c3e50'; // Darker red when about to fire
         ctx.fillRect(
             this.position.x, 
             this.position.y, 
@@ -309,14 +319,42 @@ export class CannonTruck extends GameObject {
             );
         }
         
-        // Draw cannon barrel
-        ctx.fillStyle = '#7f8c8d';
+        // Draw cannon barrel - glowing when about to fire
+        ctx.fillStyle = this.isAboutToFire ? '#ff4d4d' : '#7f8c8d';
         ctx.fillRect(
             this.position.x - this.width * 0.2,
             this.position.y + this.height * 0.25,
             this.width * 0.3,
             this.height * 0.15
         );
+        
+        // Add a glow effect when about to fire
+        if (this.isAboutToFire) {
+            ctx.globalAlpha = 0.4;
+            // Draw a red halo around the cannon barrel
+            const gradient = ctx.createRadialGradient(
+                this.position.x - this.width * 0.1,
+                this.position.y + this.height * 0.32,
+                1,
+                this.position.x - this.width * 0.1,
+                this.position.y + this.height * 0.32,
+                this.width * 0.4
+            );
+            gradient.addColorStop(0, '#ff0000');
+            gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(
+                this.position.x - this.width * 0.1,
+                this.position.y + this.height * 0.32,
+                this.width * 0.4,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
         
         // Draw wheels
         ctx.fillStyle = '#2c3e50';
@@ -370,11 +408,11 @@ export class BossCannonTruck extends CannonTruck {
         ctx.save();
         
         // Draw truck base (looks like a bigger, meaner logging truck)
-        ctx.fillStyle = '#800000'; // Dark red
+        ctx.fillStyle = this.isAboutToFire ? '#e74c3c' : '#800000'; // Red when about to fire, normal dark red otherwise
         ctx.fillRect(this.position.x, this.position.y, this.width, this.height * 0.7);
         
         // Draw truck cabin
-        ctx.fillStyle = '#600000'; // Darker red
+        ctx.fillStyle = this.isAboutToFire ? '#c0392b' : '#600000'; // Darker red when about to fire
         ctx.fillRect(
             this.position.x, 
             this.position.y, 
@@ -394,7 +432,7 @@ export class BossCannonTruck extends CannonTruck {
         }
         
         // Draw double cannon barrels
-        ctx.fillStyle = '#444';
+        ctx.fillStyle = this.isAboutToFire ? '#ff4d4d' : '#444';
         // Upper cannon
         ctx.fillRect(
             this.position.x - this.width * 0.25,
@@ -409,6 +447,34 @@ export class BossCannonTruck extends CannonTruck {
             this.width * 0.35,
             this.height * 0.12
         );
+        
+        // Add a glow effect when about to fire
+        if (this.isAboutToFire) {
+            ctx.globalAlpha = 0.4;
+            // Draw a red halo around the cannon barrel
+            const gradient = ctx.createRadialGradient(
+                this.position.x - this.width * 0.1,
+                this.position.y + this.height * 0.32,
+                1,
+                this.position.x - this.width * 0.1,
+                this.position.y + this.height * 0.32,
+                this.width * 0.4
+            );
+            gradient.addColorStop(0, '#ff0000');
+            gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(
+                this.position.x - this.width * 0.1,
+                this.position.y + this.height * 0.32,
+                this.width * 0.4,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
         
         // Draw wheels
         ctx.fillStyle = '#333';

@@ -29,6 +29,7 @@ export class Game {
     private reachedFernie: boolean = false; // Track if player has reached Fernie Alpine Ski Resort
     private playerDead: boolean = false; // Track if player has died from elk collision
     private explosionActive: boolean = false; // Track if explosion animation is active
+    private isPlayerExplosion: boolean = false; // Track if the explosion is for the player (game over) or something else
     private explosionTimer: number = 0; // Timer for explosion animation
     private explosionDuration: number = 2.5; // Increased duration for more dramatic explosion effect
     private explosionParticles: {x: number, y: number, vx: number, vy: number, size: number, color: string, lifetime: number}[] = [];
@@ -150,7 +151,9 @@ export class Game {
             // After explosion ends, show game over
             if (this.explosionTimer >= this.explosionDuration) {
                 this.explosionActive = false;
-                this.playerDead = true;
+                if (this.isPlayerExplosion) {
+                    this.playerDead = true;
+                }
             }
         } else if (this.playerDead) {
             // Show game over screen when player hits an elk
@@ -327,7 +330,7 @@ export class Game {
         this.spawnTimer += deltaTime;
         
         // Check if we should spawn the boss truck (after 20 regular trucks destroyed)
-        if (this.cannonTrucksDestroyed >= 20 && !this.bossCannonTruckSpawned && !this.bossCannonTruckDestroyed) {
+        if (this.cannonTrucksDestroyed >= 2 && !this.bossCannonTruckSpawned && !this.bossCannonTruckDestroyed) {
             // Spawn the boss cannon truck
             console.log("Spawning BOSS cannon truck!");
             const bossTruck = new BossCannonTruck(
@@ -617,6 +620,7 @@ export class Game {
                 // Set explosion active flag and reset timer
                 this.explosionActive = true;
                 this.explosionTimer = 0;
+                this.isPlayerExplosion = true;
                 
                 // Make all other elk angry when you hit one of them
                 this.makeAllElkAngry();
@@ -683,6 +687,7 @@ export class Game {
                                         
                                         // Create a big explosion for the boss
                                         this.createExplosion(target.position.x, target.position.y);
+                                        this.isPlayerExplosion = false;
                                         this.shakeScreen(2.0); // Stronger screen shake for boss
                                     }
                                 }
@@ -751,6 +756,7 @@ export class Game {
         
         // Reset explosion state
         this.explosionActive = false;
+        this.isPlayerExplosion = false;
         this.explosionTimer = 0;
         this.explosionParticles = [];
     }
