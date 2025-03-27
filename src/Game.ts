@@ -181,7 +181,7 @@ export class Game {
     
     private updateEntities(deltaTime: number): void {
         // Check if we've reached Fernie Alpine Ski Resort
-        if (this.cannonTrucksDestroyed >= 25 && !this.reachedFernie) {
+        if (this.cannonTrucksDestroyed >= 5 && !this.reachedFernie) {
             this.reachedFernie = true;
             
             // Don't stop the game, just change state to show victory screen
@@ -1140,61 +1140,87 @@ export class Game {
     
     private drawDetailedSkiLifts(): void {
         // Draw a simple chairlift going up the rightmost mountain
+        const liftStartX = this.canvas.width * 0.6;  // Align with the base of the right mountain
+        const liftEndX = this.canvas.width * 0.75;   // Align with the peak of the right mountain
+        const liftStartY = this.groundLevel - 10;
+        const liftEndY = this.groundLevel - 250;     // Match the mountain height
+        
         this.ctx.strokeStyle = '#000000';
-        this.ctx.lineWidth = 2;
+        this.ctx.lineWidth = 3;
         
         // Draw lift cable
         this.ctx.beginPath();
-        this.ctx.moveTo(this.canvas.width * 0.6, this.groundLevel - 10);
-        this.ctx.lineTo(this.canvas.width * 0.75, this.groundLevel * 0.4);
+        this.ctx.moveTo(liftStartX, liftStartY);
+        this.ctx.lineTo(liftEndX, liftEndY);
         this.ctx.stroke();
         
-        // Draw lift towers
-        this.drawLiftTower(this.canvas.width * 0.65, this.groundLevel - 50, 60);
-        this.drawLiftTower(this.canvas.width * 0.7, this.groundLevel - 100, 80);
+        // Draw lift towers at proper intervals
+        const numTowers = 4;
+        for (let i = 0; i < numTowers; i++) {
+            const progress = i / (numTowers - 1);
+            const x = liftStartX + (liftEndX - liftStartX) * progress;
+            const y = liftStartY + (liftEndY - liftStartY) * progress;
+            const height = 40 + (60 * progress); // Taller towers higher up the mountain
+            
+            this.drawLiftTower(x, y, height);
+        }
         
-        // Draw a few chairs on the lift
-        this.drawChair(this.canvas.width * 0.63, this.groundLevel - 40);
-        this.drawChair(this.canvas.width * 0.68, this.groundLevel - 80);
-        this.drawChair(this.canvas.width * 0.73, this.groundLevel - 120);
-    }
-    
-    private drawLiftTower(x: number, y: number, height: number): void {
-        this.ctx.strokeStyle = '#555555';
-        this.ctx.lineWidth = 6;
+        // Draw chairs evenly spaced along the lift
+        const numChairs = 6;
+        for (let i = 0; i < numChairs; i++) {
+            const progress = i / numChairs;
+            const x = liftStartX + (liftEndX - liftStartX) * progress;
+            const y = liftStartY + (liftEndY - liftStartY) * progress;
+            
+            this.drawChair(x, y);
+        }
         
-        // Main support
+        // Draw a second ski lift on the middle mountain
+        const lift2StartX = this.canvas.width * 0.45;
+        const lift2EndX = this.canvas.width * 0.5;
+        const lift2StartY = this.groundLevel - 10;
+        const lift2EndY = this.groundLevel - 290;
+        
         this.ctx.beginPath();
-        this.ctx.moveTo(x, y + height);
-        this.ctx.lineTo(x, y);
+        this.ctx.moveTo(lift2StartX, lift2StartY);
+        this.ctx.lineTo(lift2EndX, lift2EndY);
         this.ctx.stroke();
         
-        // Cross support
-        this.ctx.beginPath();
-        this.ctx.moveTo(x - 10, y + 20);
-        this.ctx.lineTo(x + 10, y);
-        this.ctx.stroke();
-    }
-    
-    private drawChair(x: number, y: number): void {
-        // Chair lift seat
-        this.ctx.fillStyle = '#333333';
-        this.ctx.fillRect(x - 10, y, 20, 5);
+        // Draw towers for second lift
+        const numTowers2 = 3;
+        for (let i = 0; i < numTowers2; i++) {
+            const progress = i / (numTowers2 - 1);
+            const x = lift2StartX + (lift2EndX - lift2StartX) * progress;
+            const y = lift2StartY + (lift2EndY - lift2StartY) * progress;
+            const height = 50 + (60 * progress);
+            
+            this.drawLiftTower(x, y, height);
+        }
         
-        // Support bar
-        this.ctx.strokeStyle = '#333333';
-        this.ctx.lineWidth = 2;
-        this.ctx.beginPath();
-        this.ctx.moveTo(x, y - 15);
-        this.ctx.lineTo(x, y);
-        this.ctx.stroke();
+        // Draw chairs for second lift
+        const numChairs2 = 5;
+        for (let i = 0; i < numChairs2; i++) {
+            const progress = i / numChairs2;
+            const x = lift2StartX + (lift2EndX - lift2StartX) * progress;
+            const y = lift2StartY + (lift2EndY - lift2StartY) * progress;
+            
+            this.drawChair(x, y);
+        }
     }
     
     private drawSkiers(): void {
-        // Draw several skiers on the slopes
-        for (let i = 0; i < 10; i++) {
-            const x = Math.random() * this.canvas.width;
-            const y = this.groundLevel - Math.random() * 200 - 50;
+        // Draw skiers on both mountain sides
+        this.drawSkiersOnSlope(700, 750, this.groundLevel - 260, this.groundLevel - 50, 8); // Right mountain
+        this.drawSkiersOnSlope(500, 550, this.groundLevel - 300, this.groundLevel - 70, 6); // Middle mountain
+        this.drawSkiersOnSlope(300, 350, this.groundLevel - 280, this.groundLevel - 60, 7); // Left mountain
+    }
+    
+    private drawSkiersOnSlope(startX: number, endX: number, startY: number, endY: number, count: number): void {
+        for (let i = 0; i < count; i++) {
+            // Distribute skiers along the slope
+            const progress = i / count;
+            const x = startX + (endX - startX) * progress;
+            const y = startY + (endY - startY) * progress;
             
             // Draw colorful skier body
             this.ctx.fillStyle = ['#FF5733', '#33FF57', '#3357FF', '#F3FF33', '#FF33F3'][Math.floor(Math.random() * 5)];
@@ -1226,21 +1252,28 @@ export class Game {
             this.ctx.lineTo(x + 10, y + 15);
             this.ctx.stroke();
             
-            // Draw skier's trail
+            // Draw skier's trail (shorter and aligned with mountain slope)
             this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
             this.ctx.lineWidth = 2;
             this.ctx.beginPath();
             
-            // Wavy trail pattern
-            const trailLength = Math.random() * 100 + 50;
-            const startX = x;
-            const startY = y + 10;
+            // Slope-aligned trail
+            const trailLength = Math.random() * 40 + 30;
+            const slopeAngle = Math.atan2(endY - startY, endX - startX);
             
-            this.ctx.moveTo(startX, startY);
-            for (let j = 0; j < trailLength; j += 10) {
-                const waveX = startX + Math.sin(j * 0.1) * 10;
-                const waveY = startY + j;
-                this.ctx.lineTo(waveX, waveY);
+            this.ctx.moveTo(x, y + 10);
+            
+            // Create trail that follows the slope angle
+            const endTrailX = x + Math.cos(slopeAngle) * trailLength;
+            const endTrailY = y + Math.sin(slopeAngle) * trailLength;
+            
+            // Add some waviness to the trail
+            for (let j = 0; j < 5; j++) {
+                const t = j / 4;
+                const midX = x + (endTrailX - x) * t;
+                const midY = y + 10 + (endTrailY - (y + 10)) * t;
+                const waveX = midX + Math.sin(j * 1.5) * 5;
+                this.ctx.lineTo(waveX, midY);
             }
             
             this.ctx.stroke();
@@ -1304,5 +1337,56 @@ export class Game {
         this.ctx.lineTo(x + width*0.3, y - height*0.75);
         this.ctx.closePath();
         this.ctx.fill();
+    }
+    
+    private drawLiftTower(x: number, y: number, height: number): void {
+        this.ctx.strokeStyle = '#555555';
+        this.ctx.lineWidth = 6;
+        
+        // Main support
+        this.ctx.beginPath();
+        this.ctx.moveTo(x, y + height);
+        this.ctx.lineTo(x, y);
+        this.ctx.stroke();
+        
+        // Cross support
+        this.ctx.beginPath();
+        this.ctx.moveTo(x - 10, y + 20);
+        this.ctx.lineTo(x + 10, y);
+        this.ctx.stroke();
+        
+        // Platform at top
+        this.ctx.fillStyle = '#444444';
+        this.ctx.fillRect(x - 15, y - 5, 30, 5);
+    }
+    
+    private drawChair(x: number, y: number): void {
+        // Hanging wire
+        this.ctx.strokeStyle = '#333333';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.moveTo(x, y - 15);
+        this.ctx.lineTo(x, y);
+        this.ctx.stroke();
+        
+        // Chair lift seat
+        this.ctx.fillStyle = '#333333';
+        this.ctx.fillRect(x - 10, y, 20, 5);
+        
+        // Chair back
+        this.ctx.fillRect(x - 8, y - 10, 16, 10);
+        
+        // Occasionally add a person in a chair
+        if (Math.random() > 0.5) {
+            // Person sitting
+            this.ctx.fillStyle = ['#FF5733', '#33FF57', '#3357FF', '#F3FF33', '#FF33F3'][Math.floor(Math.random() * 5)];
+            this.ctx.fillRect(x - 6, y - 8, 12, 8);
+            
+            // Head
+            this.ctx.fillStyle = '#F5DEB3';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y - 12, 4, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
     }
 }
