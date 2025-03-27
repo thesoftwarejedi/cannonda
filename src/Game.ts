@@ -181,7 +181,7 @@ export class Game {
     
     private updateEntities(deltaTime: number): void {
         // Check if we've reached Fernie Alpine Ski Resort
-        if (this.cannonTrucksDestroyed >= 5 && !this.reachedFernie) {
+        if (this.cannonTrucksDestroyed >= 25 && !this.reachedFernie) {
             this.reachedFernie = true;
             
             // Don't stop the game, just change state to show victory screen
