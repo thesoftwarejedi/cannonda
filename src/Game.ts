@@ -27,6 +27,7 @@ export class Game {
     private cannonTrucksSpawned: number = 0; // Track number of cannon trucks spawned
     private cannonTrucksDestroyed: number = 0; // Track number of cannon trucks destroyed
     private reachedFernie: boolean = false; // Track if player has reached Fernie Alpine Ski Resort
+    private playerDead: boolean = false; // Track if player has died from elk collision
     
     constructor(canvasId: string) {
         this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -48,8 +49,9 @@ export class Game {
         this.ground = new Ground(0, this.groundLevel, this.canvas.width * 2, 50);
         this.entities.push(this.ground);
         
-        // Create player
-        this.player = new Player(this.canvas.width * 0.3, this.groundLevel - 50);
+        // Create player - position it higher to prevent wheels from being in the ground
+        // The height needs to account for the wheel radius which is 20% of the player height
+        this.player = new Player(this.canvas.width * 0.3, this.groundLevel - 80);  
         this.entities.push(this.player);
     }
     
@@ -103,6 +105,15 @@ export class Game {
             }
             // Draw start screen
             this.renderStartScreen();
+        } else if (this.playerDead) {
+            // Show game over screen when player hits an elk
+            this.renderGameOverScreen();
+            
+            // Check for user input to restart
+            if (this.inputManager.isKeyPressed(Keys.Space) || this.inputManager.isKeyPressed(Keys.Enter)) {
+                this.playerDead = false;
+                this.reset();
+            }
         } else if (this.reachedFernie) {
             // Show victory screen if we've reached Fernie
             this.renderFernieVictoryScreen();
@@ -508,8 +519,8 @@ export class Game {
         // Handle collisions between the player and the entity
         if (this.player.intersects(entity)) {
             if (entity.type === ObjectType.Elk) {
-                // Jumped over an elk, gain score
-                this.score += 100;
+                // Hitting an elk ends the game and shows game over screen
+                this.playerDead = true;
                 entity.isActive = false;
                 this.markEntityForRemoval(entity);
                 
@@ -606,21 +617,24 @@ export class Game {
         this.entities = [this.player, this.ground];
         this.entitiesToRemove = [];
         
-        // Reset player
-        this.player.reset(this.canvas.width * 0.3, this.groundLevel - 50);
+        // Reset player - position it higher to prevent wheels from being in the ground
+        // The height needs to account for the wheel radius which is 20% of the player height
+        this.player.reset(this.canvas.width * 0.3, this.groundLevel - this.player.height - this.player.height * 0.2);
         
         // Reset score
         this.score = 0;
-        this.scoreElement.textContent = `Score: ${this.score}`;
+        this.scoreElement.textContent = `Score: ${this.score} | Rocks: ${this.player.getRockCount()}`;
         
         // Reset camera
         this.cameraOffset = 0;
         
         // Reset timers
         this.spawnTimer = 0;
-        this.gameStarted = false;
+        this.gameStarted = true;  // Keep game started when respawning
         this.cannonTrucksSpawned = 0;
         this.cannonTrucksDestroyed = 0;
+        this.playerDead = false;  // Reset player dead state
+        this.reachedFernie = false;  // Reset reached Fernie state
     }
     
     private checkLightningHits(): void {
@@ -1126,7 +1140,7 @@ export class Game {
                     x + i + Math.random() * 5,
                     y + height - stoneHeight + j + Math.random() * 5,
                     10 + Math.random() * 5,
-                    5 + Math.random() * 5
+                    5 + Math.random() * 10
                 );
             }
         }
@@ -1398,16 +1412,17 @@ export class Game {
         this.ctx.fill();
         
         // Lantern glow
-        const glowGradient = this.ctx.createRadialGradient(
+        const glowRadius = 10;
+        const gradient = this.ctx.createRadialGradient(
             x, y - 38, 2,
-            x, y - 38, 20
+            x, y - 38, glowRadius
         );
-        glowGradient.addColorStop(0, 'rgba(255, 244, 179, 0.6)');
-        glowGradient.addColorStop(1, 'rgba(255, 244, 179, 0)');
+        gradient.addColorStop(0, 'rgba(255, 244, 179, 0.6)');
+        gradient.addColorStop(1, 'rgba(255, 244, 179, 0)');
         
-        this.ctx.fillStyle = glowGradient;
+        this.ctx.fillStyle = gradient;
         this.ctx.beginPath();
-        this.ctx.arc(x, y - 38, 20, 0, Math.PI * 2);
+        this.ctx.arc(x, y - 38, glowRadius, 0, Math.PI * 2);
         this.ctx.fill();
     }
     
@@ -1709,5 +1724,96 @@ export class Game {
             this.ctx.arc(x, y, size, 0, Math.PI * 2);
             this.ctx.fill();
         }
+    }
+    
+    private renderGameOverScreen(): void {
+        // Create a dramatic background with red tint
+        const skyGradient = this.ctx.createLinearGradient(0, 0, 0, this.groundLevel);
+        skyGradient.addColorStop(0, '#590000'); // Dark red at top
+        skyGradient.addColorStop(0.6, '#A30000'); // Mid-tone red
+        skyGradient.addColorStop(1, '#FF5252'); // Lighter red at bottom
+        
+        // Fill background with gradient sky
+        this.ctx.fillStyle = skyGradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Draw elk silhouette
+        this.drawElkSilhouette();
+        
+        // Draw game over text
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = 'bold 72px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('GAME OVER', this.canvas.width / 2, this.canvas.height / 3);
+        
+        // Draw death message
+        this.ctx.font = 'bold 36px Arial';
+        this.ctx.fillText('Your truck was destroyed by an elk!', this.canvas.width / 2, this.canvas.height / 2);
+        
+        // Draw score
+        this.ctx.font = '28px Arial';
+        this.ctx.fillText(`Final Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 50);
+        
+        // Draw respawn instruction
+        this.ctx.font = '24px Arial';
+        this.ctx.fillStyle = '#FFEB3B'; // Bright yellow color
+        this.ctx.fillText('Press SPACE or ENTER to respawn', this.canvas.width / 2, this.canvas.height * 0.7);
+    }
+    
+    private drawElkSilhouette(): void {
+        this.ctx.fillStyle = 'black';
+        
+        // Position the elk at the center bottom of the screen
+        const x = this.canvas.width / 2 - 100;
+        const y = this.groundLevel - 160;
+        const width = 200;
+        const height = 160;
+        
+        // Draw elk body
+        this.ctx.fillRect(x, y + height * 0.4, width, height * 0.6);
+        
+        // Draw elk head
+        this.ctx.fillRect(x + width * 0.7, y, width * 0.3, height * 0.5);
+        
+        // Draw antlers
+        this.ctx.beginPath();
+        // Left antler
+        this.ctx.moveTo(x + width * 0.8, y);
+        this.ctx.lineTo(x + width * 0.6, y - height * 0.4);
+        this.ctx.lineTo(x + width * 0.5, y - height * 0.3);
+        this.ctx.lineTo(x + width * 0.7, y - height * 0.5);
+        this.ctx.lineTo(x + width * 0.65, y - height * 0.2);
+        this.ctx.lineTo(x + width * 0.8, y);
+        
+        // Right antler
+        this.ctx.moveTo(x + width * 0.9, y);
+        this.ctx.lineTo(x + width * 1.1, y - height * 0.4);
+        this.ctx.lineTo(x + width * 1.2, y - height * 0.3);
+        this.ctx.lineTo(x + width * 1.0, y - height * 0.5);
+        this.ctx.lineTo(x + width * 1.15, y - height * 0.2);
+        this.ctx.lineTo(x + width * 0.9, y);
+        
+        this.ctx.fill();
+        
+        // Draw glowing red eyes
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.beginPath();
+        this.ctx.arc(x + width * 0.85, y + height * 0.2, 5, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Add glow effect to eyes
+        const glowRadius = 10;
+        const gradient = this.ctx.createRadialGradient(
+            x + width * 0.85, y + height * 0.2, 5,
+            x + width * 0.85, y + height * 0.2, glowRadius
+        );
+        gradient.addColorStop(0, 'rgba(255, 0, 0, 1)');
+        gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+        
+        this.ctx.fillStyle = gradient;
+        this.ctx.beginPath();
+        this.ctx.arc(x + width * 0.85, y + height * 0.2, glowRadius, 0, Math.PI * 2);
+        this.ctx.fill();
     }
 }
