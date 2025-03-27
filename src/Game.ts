@@ -103,6 +103,9 @@ export class Game {
             }
             // Draw start screen
             this.renderStartScreen();
+        } else if (this.reachedFernie) {
+            // Show victory screen if we've reached Fernie
+            this.renderFernieVictoryScreen();
         } else {
             // Update game elements
             this.updateCamera(deltaTime);
@@ -178,14 +181,14 @@ export class Game {
     
     private updateEntities(deltaTime: number): void {
         // Check if we've reached Fernie Alpine Ski Resort
-        if (this.cannonTrucksDestroyed >= 25 && !this.reachedFernie) {
+        if (this.cannonTrucksDestroyed >= 5 && !this.reachedFernie) {
             this.reachedFernie = true;
             
-            // Stop the game
-            this.running = false;
+            // Don't stop the game, just change state to show victory screen
+            // this.running = false; // REMOVED THIS LINE
             
             // Show Fernie Alpine Ski Resort
-            this.renderFernieVictoryScreen();
+            console.log("VICTORY! Reached Fernie Alpine Resort!");
         }
         
         // Update player
@@ -735,159 +738,407 @@ export class Game {
         // Clear the canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Draw sky gradient (blue to light blue)
+        // Create a more vibrant gradient background
         const skyGradient = this.ctx.createLinearGradient(0, 0, 0, this.groundLevel);
-        skyGradient.addColorStop(0, '#3498db');  // Darker blue at top
-        skyGradient.addColorStop(1, '#87cefa');  // Lighter blue near horizon
+        skyGradient.addColorStop(0, '#1a5bc4');  // Richer blue at top
+        skyGradient.addColorStop(0.5, '#3d8bd9'); // Mid blue
+        skyGradient.addColorStop(0.8, '#7ab8ff');  // Light blue near horizon
+        skyGradient.addColorStop(1, '#c4e3ff');  // Almost white at horizon
         this.ctx.fillStyle = skyGradient;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Draw snow-covered ground
-        this.ctx.fillStyle = '#FFFFFF';
+        // Add sun
+        this.ctx.fillStyle = '#ffdd1f';
+        this.ctx.beginPath();
+        this.ctx.arc(this.canvas.width * 0.8, 120, 60, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Add sun glow
+        const sunGlow = this.ctx.createRadialGradient(
+            this.canvas.width * 0.8, 120, 30,
+            this.canvas.width * 0.8, 120, 120
+        );
+        sunGlow.addColorStop(0, 'rgba(255, 221, 31, 0.8)');
+        sunGlow.addColorStop(0.5, 'rgba(255, 221, 31, 0.2)');
+        sunGlow.addColorStop(1, 'rgba(255, 221, 31, 0)');
+        this.ctx.fillStyle = sunGlow;
+        this.ctx.beginPath();
+        this.ctx.arc(this.canvas.width * 0.8, 120, 120, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Draw more realistic snow ground with sparkles
+        const groundGradient = this.ctx.createLinearGradient(0, this.groundLevel, 0, this.canvas.height);
+        groundGradient.addColorStop(0, '#ffffff');  // Pure white at top
+        groundGradient.addColorStop(1, '#e3f2fd');  // Slight blue tint at bottom
+        this.ctx.fillStyle = groundGradient;
         this.ctx.fillRect(0, this.groundLevel, this.canvas.width, this.canvas.height - this.groundLevel);
         
-        // Draw mountains (Fernie is known for its 3 main peaks)
-        this.drawFerniePeaks();
+        // Add snow sparkles
+        for (let i = 0; i < 100; i++) {
+            const x = Math.random() * this.canvas.width;
+            const y = this.groundLevel + Math.random() * (this.canvas.height - this.groundLevel);
+            const size = Math.random() * 3 + 1;
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, size, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
         
-        // Draw ski lodge
-        this.drawSkiLodge();
+        // Draw epic mountains with better shading
+        this.drawEpicFerniePeaks();
         
-        // Draw ski lifts
-        this.drawSkiLifts();
+        // Draw improved ski lodge
+        this.drawFancySkiLodge();
         
-        // Draw some trees
-        this.drawTrees();
+        // Draw better ski lifts
+        this.drawDetailedSkiLifts();
         
-        // Draw victory text
-        this.ctx.font = 'bold 48px Arial';
-        this.ctx.fillStyle = '#FFFFFF';
+        // Draw skiers on the slopes
+        this.drawSkiers();
+        
+        // Draw more realistic trees
+        this.drawFancyTrees();
+        
+        // Add falling snow
+        this.drawFallingSnow();
+        
+        // Create a banner for text
+        this.ctx.fillStyle = 'rgba(59, 89, 152, 0.85)';  // Facebook blue with transparency
+        this.ctx.fillRect(0, 80, this.canvas.width, 170);
+        
+        // Add a gold border to the banner
+        this.ctx.strokeStyle = '#ffd700';
+        this.ctx.lineWidth = 5;
+        this.ctx.strokeRect(10, 90, this.canvas.width - 20, 150);
+        
+        // Draw victory text with better styling
+        this.ctx.font = 'bold 60px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         
-        // Add text shadow for better visibility
-        this.ctx.shadowColor = '#000000';
+        // Create text gradient
+        const textGradient = this.ctx.createLinearGradient(
+            this.canvas.width/2 - 100, 140, 
+            this.canvas.width/2 + 100, 140
+        );
+        textGradient.addColorStop(0, '#f9d423');  // Gold
+        textGradient.addColorStop(1, '#f83600');  // Orange-red
+        
+        // Add glow effect
+        this.ctx.shadowColor = '#f9d423';
+        this.ctx.shadowBlur = 20;
+        this.ctx.shadowOffsetX = 0;
+        this.ctx.shadowOffsetY = 0;
+        
+        this.ctx.fillStyle = textGradient;
+        this.ctx.fillText('VICTORY!', this.canvas.width / 2, 140);
+        
+        // Draw subtitle with style
         this.ctx.shadowBlur = 10;
-        this.ctx.fillText('VICTORY!', this.canvas.width / 2, 100);
+        this.ctx.font = 'bold 32px Arial';
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillText('You reached Fernie Alpine Ski Resort!', this.canvas.width / 2, 190);
         
-        // Draw subtitle
-        this.ctx.font = '32px Arial';
-        this.ctx.fillText('You reached Fernie Alpine Ski Resort!', this.canvas.width / 2, 160);
-        
-        // Add score info
-        this.ctx.font = '24px Arial';
-        this.ctx.fillText(`Final Score: ${this.score} | Rocks Remaining: ${this.player.getRockCount()}`, this.canvas.width / 2, 220);
-        
-        // Remove shadow for remaining elements
+        // Reset shadow for rest of text
         this.ctx.shadowBlur = 0;
         
-        // Draw restart instructions
-        this.ctx.font = '20px Arial';
-        this.ctx.fillStyle = '#FFFFFF';
+        // Add score info with better styling
+        this.ctx.font = 'bold 28px Arial';
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillText(`Final Score: ${this.score} | Rocks Remaining: ${this.player.getRockCount()}`, this.canvas.width / 2, 270);
+        
+        // Draw restart instructions with better contrast
+        this.ctx.font = 'bold 22px Arial';
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.shadowColor = '#000000';
+        this.ctx.shadowBlur = 8;
         this.ctx.fillText('Refresh the page to play again', this.canvas.width / 2, this.canvas.height - 30);
+        this.ctx.shadowBlur = 0;
     }
     
-    private drawFerniePeaks(): void {
-        // Drawing the iconic three peaks of Fernie
+    private drawEpicFerniePeaks(): void {
+        // Create a much more impressive mountain range
         
-        // Color gradient for mountains 
+        // Realistic mountain gradient with snow caps
         const mountainGradient = this.ctx.createLinearGradient(0, 0, 0, this.groundLevel);
-        mountainGradient.addColorStop(0, '#FFFFFF');  // Snow caps
-        mountainGradient.addColorStop(0.6, '#A9A9A9'); // Rocky middle
-        mountainGradient.addColorStop(1, '#4B5842');   // Forested base
+        mountainGradient.addColorStop(0, '#FFFFFF');  // Bright white snow caps
+        mountainGradient.addColorStop(0.3, '#E8F5FD'); // Light snow 
+        mountainGradient.addColorStop(0.5, '#A9BCD1'); // Light rocky area
+        mountainGradient.addColorStop(0.7, '#4C6785'); // Dark blue-gray rocks
+        mountainGradient.addColorStop(1, '#2E3F53');   // Dark base
         
-        // First peak (left)
+        // First peak (left) - The Lizard Range
         this.ctx.fillStyle = mountainGradient;
         this.ctx.beginPath();
-        this.ctx.moveTo(this.canvas.width * 0.1, this.groundLevel);
-        this.ctx.lineTo(this.canvas.width * 0.3, this.groundLevel * 0.3); // Peak
-        this.ctx.lineTo(this.canvas.width * 0.45, this.groundLevel * 0.5);
-        this.ctx.lineTo(this.canvas.width * 0.5, this.groundLevel);
+        this.ctx.moveTo(0, this.groundLevel);
+        
+        // Create a more jagged and realistic mountain shape
+        this.ctx.lineTo(50, this.groundLevel - 100);
+        this.ctx.lineTo(120, this.groundLevel - 180);
+        this.ctx.lineTo(180, this.groundLevel - 240); // Minor peak
+        this.ctx.lineTo(240, this.groundLevel - 210);
+        this.ctx.lineTo(300, this.groundLevel - 280); // Second peak
+        this.ctx.lineTo(350, this.groundLevel - 220);
+        this.ctx.lineTo(400, this.groundLevel - 150);
+        this.ctx.lineTo(450, this.groundLevel);
+        
         this.ctx.closePath();
         this.ctx.fill();
         
-        // Second peak (middle, tallest)
-        this.ctx.fillStyle = mountainGradient;
+        // Add snow highlights with subtle gradient
+        const snowGradient = this.ctx.createLinearGradient(0, 0, 0, this.groundLevel - 150);
+        snowGradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+        snowGradient.addColorStop(1, 'rgba(255, 255, 255, 0.2)');
+        
+        this.ctx.fillStyle = snowGradient;
         this.ctx.beginPath();
-        this.ctx.moveTo(this.canvas.width * 0.35, this.groundLevel);
-        this.ctx.lineTo(this.canvas.width * 0.5, this.groundLevel * 0.2); // Peak
-        this.ctx.lineTo(this.canvas.width * 0.65, this.groundLevel * 0.5);
-        this.ctx.lineTo(this.canvas.width * 0.7, this.groundLevel);
+        this.ctx.moveTo(120, this.groundLevel - 180);
+        this.ctx.lineTo(180, this.groundLevel - 240);
+        this.ctx.lineTo(240, this.groundLevel - 210);
+        this.ctx.lineTo(300, this.groundLevel - 280);
+        this.ctx.lineTo(280, this.groundLevel - 250);
+        this.ctx.lineTo(220, this.groundLevel - 190);
+        this.ctx.lineTo(180, this.groundLevel - 220);
+        this.ctx.lineTo(140, this.groundLevel - 170);
         this.ctx.closePath();
         this.ctx.fill();
         
-        // Third peak (right)
+        // Second peak (middle) - Polar Peak (tallest)
         this.ctx.fillStyle = mountainGradient;
         this.ctx.beginPath();
-        this.ctx.moveTo(this.canvas.width * 0.6, this.groundLevel);
-        this.ctx.lineTo(this.canvas.width * 0.75, this.groundLevel * 0.3); // Peak
-        this.ctx.lineTo(this.canvas.width * 0.9, this.groundLevel * 0.7);
-        this.ctx.lineTo(this.canvas.width * 0.95, this.groundLevel);
+        this.ctx.moveTo(400, this.groundLevel);
+        this.ctx.lineTo(450, this.groundLevel - 120);
+        this.ctx.lineTo(500, this.groundLevel - 300); // Highest peak
+        this.ctx.lineTo(550, this.groundLevel - 260);
+        this.ctx.lineTo(600, this.groundLevel - 200);
+        this.ctx.lineTo(650, this.groundLevel);
         this.ctx.closePath();
         this.ctx.fill();
+        
+        // Add snow cap to middle peak
+        this.ctx.fillStyle = snowGradient;
+        this.ctx.beginPath();
+        this.ctx.moveTo(470, this.groundLevel - 250);
+        this.ctx.lineTo(500, this.groundLevel - 300);
+        this.ctx.lineTo(530, this.groundLevel - 270);
+        this.ctx.lineTo(510, this.groundLevel - 240);
+        this.ctx.closePath();
+        this.ctx.fill();
+        
+        // Third peak (right) - Siberia Ridge
+        this.ctx.fillStyle = mountainGradient;
+        this.ctx.beginPath();
+        this.ctx.moveTo(600, this.groundLevel);
+        this.ctx.lineTo(650, this.groundLevel - 150);
+        this.ctx.lineTo(700, this.groundLevel - 220);
+        this.ctx.lineTo(750, this.groundLevel - 260); // Peak
+        this.ctx.lineTo(800, this.groundLevel - 220);
+        this.ctx.lineTo(850, this.groundLevel - 160);
+        this.ctx.lineTo(900, this.groundLevel);
+        this.ctx.closePath();
+        this.ctx.fill();
+        
+        // Add snow cap to right peak
+        this.ctx.fillStyle = snowGradient;
+        this.ctx.beginPath();
+        this.ctx.moveTo(720, this.groundLevel - 240);
+        this.ctx.lineTo(750, this.groundLevel - 260);
+        this.ctx.lineTo(780, this.groundLevel - 230);
+        this.ctx.lineTo(760, this.groundLevel - 210);
+        this.ctx.closePath();
+        this.ctx.fill();
+        
+        // Add mountain contour lines for more realism
+        this.ctx.strokeStyle = 'rgba(70, 90, 120, 0.3)';
+        this.ctx.lineWidth = 1;
+        
+        // Left peak contours
+        for (let y = 50; y < 200; y += 30) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(100, this.groundLevel - y);
+            this.ctx.quadraticCurveTo(200, this.groundLevel - y - 50, 300, this.groundLevel - y + 20);
+            this.ctx.stroke();
+        }
+        
+        // Middle peak contours
+        for (let y = 100; y < 250; y += 30) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(450, this.groundLevel - y);
+            this.ctx.quadraticCurveTo(500, this.groundLevel - y - 30, 550, this.groundLevel - y + 10);
+            this.ctx.stroke();
+        }
+        
+        // Right peak contours
+        for (let y = 80; y < 220; y += 30) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(700, this.groundLevel - y);
+            this.ctx.quadraticCurveTo(750, this.groundLevel - y - 20, 800, this.groundLevel - y + 10);
+            this.ctx.stroke();
+        }
     }
     
-    private drawSkiLodge(): void {
-        // Base of lodge
-        this.ctx.fillStyle = '#8B4513'; // Brown wooden lodge
-        this.ctx.fillRect(
-            this.canvas.width * 0.15, 
-            this.groundLevel - 80, 
-            this.canvas.width * 0.15, 
-            80
-        );
+    private drawFancySkiLodge(): void {
+        // Draw a much fancier ski lodge
+        const x = this.canvas.width * 0.15;
+        const y = this.groundLevel - 120;
+        const width = this.canvas.width * 0.18;
+        const height = 120;
         
-        // Roof of lodge
-        this.ctx.fillStyle = '#800000'; // Dark red roof
+        // Main lodge structure with perspective
+        this.ctx.fillStyle = '#6B4226'; // Rich wood color
         this.ctx.beginPath();
-        this.ctx.moveTo(this.canvas.width * 0.14, this.groundLevel - 80);
-        this.ctx.lineTo(this.canvas.width * 0.225, this.groundLevel - 120);
-        this.ctx.lineTo(this.canvas.width * 0.31, this.groundLevel - 80);
+        this.ctx.moveTo(x, y + height); // Bottom left
+        this.ctx.lineTo(x, y); // Top left
+        this.ctx.lineTo(x + width, y - 20); // Top right (higher for perspective)
+        this.ctx.lineTo(x + width, y + height - 20); // Bottom right (higher for perspective)
+        this.ctx.closePath();
+        this.ctx.fill();
+        
+        // Decorative wooden beams
+        this.ctx.fillStyle = '#8B5A2B'; // Lighter wood color
+        for (let i = 0; i < 5; i++) {
+            this.ctx.fillRect(
+                x + (width * 0.2) * i,
+                y,
+                10,
+                height
+            );
+        }
+        
+        // Roof with snow
+        this.ctx.fillStyle = '#5D4037'; // Dark brown roof
+        this.ctx.beginPath();
+        this.ctx.moveTo(x - 20, y); // Left overhang
+        this.ctx.lineTo(x + width * 0.5, y - 70); // Peak
+        this.ctx.lineTo(x + width + 20, y - 20); // Right overhang
+        this.ctx.lineTo(x + width, y - 20); // Top right corner
+        this.ctx.lineTo(x, y); // Top left corner
+        this.ctx.closePath();
+        this.ctx.fill();
+        
+        // Snow on the roof
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.beginPath();
+        this.ctx.moveTo(x - 20, y); // Left edge
+        this.ctx.lineTo(x + width * 0.5, y - 70); // Peak
+        this.ctx.lineTo(x + width + 20, y - 20); // Right edge
+        
+        // Wavy snow edge
+        for (let i = 0; i <= 10; i++) {
+            const waveX = x - 20 + ((width + 40) * i / 10);
+            const baseY = i < 5 ? y - (i * 14) : y - (70 - (i - 5) * 10);
+            const waveY = baseY - Math.sin(i * 0.5) * 10;
+            this.ctx.lineTo(waveX, waveY);
+        }
+        
         this.ctx.closePath();
         this.ctx.fill();
         
         // Windows
-        this.ctx.fillStyle = '#87CEFA'; // Light blue windows
-        this.ctx.fillRect(
-            this.canvas.width * 0.17, 
-            this.groundLevel - 70, 
-            this.canvas.width * 0.03, 
-            20
-        );
-        this.ctx.fillRect(
-            this.canvas.width * 0.23, 
-            this.groundLevel - 70, 
-            this.canvas.width * 0.03, 
-            20
-        );
+        this.ctx.fillStyle = '#4FC3F7'; // Light blue windows
+        for (let i = 0; i < 3; i++) {
+            for (let j = 0; j < 2; j++) {
+                this.ctx.fillRect(
+                    x + 25 + (i * 50),
+                    y + 20 + (j * 40),
+                    30,
+                    25
+                );
+                
+                // Window frames
+                this.ctx.strokeStyle = '#5D4037';
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeRect(
+                    x + 25 + (i * 50),
+                    y + 20 + (j * 40),
+                    30,
+                    25
+                );
+                
+                // Window cross
+                this.ctx.beginPath();
+                this.ctx.moveTo(x + 25 + (i * 50) + 15, y + 20 + (j * 40));
+                this.ctx.lineTo(x + 25 + (i * 50) + 15, y + 20 + (j * 40) + 25);
+                this.ctx.moveTo(x + 25 + (i * 50), y + 20 + (j * 40) + 12.5);
+                this.ctx.lineTo(x + 25 + (i * 50) + 30, y + 20 + (j * 40) + 12.5);
+                this.ctx.stroke();
+            }
+        }
         
         // Door
-        this.ctx.fillStyle = '#4E3629'; // Dark brown door
+        this.ctx.fillStyle = '#5D4037'; // Dark brown door
         this.ctx.fillRect(
-            this.canvas.width * 0.2, 
-            this.groundLevel - 40, 
-            this.canvas.width * 0.03, 
-            40
+            x + width * 0.4,
+            y + height - 50,
+            width * 0.2,
+            50
         );
         
-        // Chimney with smoke
-        this.ctx.fillStyle = '#696969'; // Gray chimney
-        this.ctx.fillRect(
-            this.canvas.width * 0.17, 
-            this.groundLevel - 130, 
-            10, 
-            30
+        // Door handle
+        this.ctx.fillStyle = '#FFC107'; // Gold
+        this.ctx.beginPath();
+        this.ctx.arc(
+            x + width * 0.55,
+            y + height - 30,
+            5,
+            0,
+            Math.PI * 2
         );
+        this.ctx.fill();
+        
+        // Chimney with stone texture
+        this.ctx.fillStyle = '#7D7D7D'; // Gray chimney
+        this.ctx.fillRect(
+            x + width * 0.2,
+            y - 100,
+            width * 0.1,
+            100
+        );
+        
+        // Stone texture on chimney
+        for (let i = 0; i < 10; i++) {
+            for (let j = 0; j < 10; j++) {
+                if ((i + j) % 2 === 0) {
+                    this.ctx.fillStyle = '#555555';
+                } else {
+                    this.ctx.fillStyle = '#777777';
+                }
+                
+                this.ctx.fillRect(
+                    x + width * 0.2 + (j * width * 0.01),
+                    y - 100 + (i * 10),
+                    width * 0.01,
+                    10
+                );
+            }
+        }
         
         // Smoke from chimney
-        this.ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
+        this.ctx.fillStyle = 'rgba(200, 200, 200, 0.8)';
         this.ctx.beginPath();
-        this.ctx.arc(this.canvas.width * 0.17 + 5, this.groundLevel - 140, 8, 0, Math.PI * 2);
-        this.ctx.arc(this.canvas.width * 0.17 + 10, this.groundLevel - 150, 10, 0, Math.PI * 2);
-        this.ctx.arc(this.canvas.width * 0.17 + 15, this.groundLevel - 160, 12, 0, Math.PI * 2);
+        this.ctx.arc(x + width * 0.25, y - 110, 8, 0, Math.PI * 2);
+        this.ctx.arc(x + width * 0.25 - 5, y - 125, 10, 0, Math.PI * 2);
+        this.ctx.arc(x + width * 0.25 - 10, y - 145, 12, 0, Math.PI * 2);
+        this.ctx.arc(x + width * 0.25 - 15, y - 170, 15, 0, Math.PI * 2);
         this.ctx.fill();
+        
+        // Lodge sign
+        this.ctx.fillStyle = '#8B4513';
+        this.ctx.fillRect(
+            x + width * 0.3,
+            y - 20,
+            width * 0.4,
+            15
+        );
+        
+        this.ctx.fillStyle = '#FFC107'; // Gold letters
+        this.ctx.font = 'bold 12px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('FERNIE ALPINE LODGE', x + width * 0.5, y - 12);
     }
     
-    private drawSkiLifts(): void {
+    private drawDetailedSkiLifts(): void {
         // Draw a simple chairlift going up the rightmost mountain
         this.ctx.strokeStyle = '#000000';
         this.ctx.lineWidth = 2;
@@ -939,7 +1190,64 @@ export class Game {
         this.ctx.stroke();
     }
     
-    private drawTrees(): void {
+    private drawSkiers(): void {
+        // Draw several skiers on the slopes
+        for (let i = 0; i < 10; i++) {
+            const x = Math.random() * this.canvas.width;
+            const y = this.groundLevel - Math.random() * 200 - 50;
+            
+            // Draw colorful skier body
+            this.ctx.fillStyle = ['#FF5733', '#33FF57', '#3357FF', '#F3FF33', '#FF33F3'][Math.floor(Math.random() * 5)];
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 8, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // Draw skier's head
+            this.ctx.fillStyle = '#F5DEB3'; // Wheat color for face
+            this.ctx.beginPath();
+            this.ctx.arc(x, y - 10, 5, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // Draw skis
+            this.ctx.strokeStyle = '#000000';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(x - 15, y + 10);
+            this.ctx.lineTo(x + 15, y + 10);
+            this.ctx.stroke();
+            
+            // Draw ski poles
+            this.ctx.strokeStyle = '#555555';
+            this.ctx.lineWidth = 1;
+            this.ctx.beginPath();
+            this.ctx.moveTo(x - 5, y - 5);
+            this.ctx.lineTo(x - 10, y + 15);
+            this.ctx.moveTo(x + 5, y - 5);
+            this.ctx.lineTo(x + 10, y + 15);
+            this.ctx.stroke();
+            
+            // Draw skier's trail
+            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            
+            // Wavy trail pattern
+            const trailLength = Math.random() * 100 + 50;
+            const startX = x;
+            const startY = y + 10;
+            
+            this.ctx.moveTo(startX, startY);
+            for (let j = 0; j < trailLength; j += 10) {
+                const waveX = startX + Math.sin(j * 0.1) * 10;
+                const waveY = startY + j;
+                this.ctx.lineTo(waveX, waveY);
+            }
+            
+            this.ctx.stroke();
+        }
+    }
+    
+    private drawFancyTrees(): void {
         // Draw several pine trees at the base of mountains
         for (let i = 0; i < 30; i++) {
             const x = Math.random() * this.canvas.width;
@@ -948,6 +1256,20 @@ export class Game {
             const width = height * 0.6;
             
             this.drawPineTree(x, y, width, height);
+        }
+    }
+    
+    private drawFallingSnow(): void {
+        // Draw falling snowflakes
+        for (let i = 0; i < 100; i++) {
+            const x = Math.random() * this.canvas.width;
+            const y = Math.random() * this.canvas.height;
+            const size = Math.random() * 2 + 1;
+            
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, size, 0, Math.PI * 2);
+            this.ctx.fill();
         }
     }
     
