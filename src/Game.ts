@@ -43,6 +43,7 @@ export class Game {
     private screenShakeOffsetY: number = 0;
     private bossCannonTruckSpawned: boolean = false; // Track if boss cannon truck has spawned
     private bossCannonTruckDestroyed: boolean = false; // Track if boss cannon truck has been destroyed
+    private showBossRespawnScreen: boolean = false; // Track if the boss respawn screen should be shown
     
     constructor(canvasId: string) {
         this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -164,6 +165,15 @@ export class Game {
                 this.playerDead = false;
                 this.reset();
             }
+        } else if (this.showBossRespawnScreen) {
+            // Show boss respawn screen
+            this.renderBossRespawnScreen();
+            
+            // Check for user input to restart
+            if (this.inputManager.isKeyPressed(Keys.Space) || this.inputManager.isKeyPressed(Keys.Enter)) {
+                this.showBossRespawnScreen = false;
+                this.reset();
+            }
         } else if (this.reachedFernie) {
             // Show victory screen if we've reached Fernie
             this.renderFernieVictoryScreen();
@@ -261,10 +271,9 @@ export class Game {
                 if (entity instanceof BossCannonTruck) {
                     // If the boss truck has passed the player (moved off screen to the left)
                     if (entity.position.x + entity.width < 0) {
-                        // Game over!
-                        console.log("GAME OVER! Boss cannon truck escaped!");
-                        alert("GAME OVER! The boss escaped. You failed to defeat the mega cannon truck!");
-                        this.reset();
+                        // Show boss respawn screen
+                        console.log("BOSS CANNON TRUCK ESCAPED! Showing respawn screen...");
+                        this.showBossRespawnScreen = true;
                         return;
                     }
                 }
@@ -330,7 +339,7 @@ export class Game {
         this.spawnTimer += deltaTime;
         
         // Check if we should spawn the boss truck (after 20 regular trucks destroyed)
-        if (this.cannonTrucksDestroyed >= 2 && !this.bossCannonTruckSpawned && !this.bossCannonTruckDestroyed) {
+        if (this.cannonTrucksDestroyed >= 20 && !this.bossCannonTruckSpawned && !this.bossCannonTruckDestroyed) {
             // Spawn the boss cannon truck
             console.log("Spawning BOSS cannon truck!");
             const bossTruck = new BossCannonTruck(
@@ -631,9 +640,37 @@ export class Game {
                 // Shake the screen for more dramatic effect
                 this.shakeScreen();
             } else if (entity.type === ObjectType.CannonTruck || entity.type === ObjectType.Rock) {
+                // Check if it's the boss cannon truck
+                const isBossCannonTruck = entity instanceof BossCannonTruck;
+                
                 // Collided with a cannon truck or rock, lose 10 rocks
                 const rocksLost = Math.min(10, this.player.getRockCount());
                 this.player.addRocks(-rocksLost);
+                
+                // If it's the boss truck, game over immediately
+                if (isBossCannonTruck) {
+                    // Create explosion effect
+                    this.createExplosion();
+                    this.isPlayerExplosion = true;
+                    
+                    // Make the player invisible during explosion
+                    this.player.isActive = false;
+                    
+                    // Set explosion active flag and reset timer
+                    this.explosionActive = true;
+                    this.explosionTimer = 0;
+                    
+                    // Shake the screen
+                    this.shakeScreen(1.5);
+                    
+                    // Show game over message after a small delay
+                    setTimeout(() => {
+                        alert("GAME OVER! Your truck was crushed by the boss cannon truck!");
+                        this.reset();
+                    }, 1500);
+                    return;
+                }
+                
                 entity.isActive = false;
                 this.markEntityForRemoval(entity);
                 
@@ -753,6 +790,9 @@ export class Game {
         this.cannonTrucksDestroyed = 0;
         this.playerDead = false;  // Reset player dead state
         this.reachedFernie = false;  // Reset reached Fernie state
+        this.bossCannonTruckSpawned = false; // Reset boss spawn state
+        this.bossCannonTruckDestroyed = false; // Reset boss destroyed state
+        this.showBossRespawnScreen = false; // Reset boss respawn screen state
         
         // Reset explosion state
         this.explosionActive = false;
@@ -2203,4 +2243,82 @@ export class Game {
         this.screenShakeOffsetX = (Math.random() * 2 - 1) * currentIntensity;
         this.screenShakeOffsetY = (Math.random() * 2 - 1) * currentIntensity;
      }
+    
+    private renderBossRespawnScreen(): void {
+        // Create a dramatic background with red tint
+        const skyGradient = this.ctx.createLinearGradient(0, 0, 0, this.groundLevel);
+        skyGradient.addColorStop(0, '#590000'); // Dark red at top
+        skyGradient.addColorStop(0.6, '#A30000'); // Mid-tone red
+        skyGradient.addColorStop(1, '#FF5252'); // Lighter red at bottom
+        
+        // Fill background with gradient sky
+        this.ctx.fillStyle = skyGradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Draw boss cannon truck silhouette
+        this.drawBossCannonTruckSilhouette();
+        
+        // Draw game over text
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = 'bold 72px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('BOSS CANNON TRUCK ESCAPED!', this.canvas.width / 2, this.canvas.height / 3);
+        
+        // Draw death message
+        this.ctx.font = 'bold 36px Arial';
+        this.ctx.fillText('You failed to defeat the mega cannon truck!', this.canvas.width / 2, this.canvas.height / 2);
+        
+        // Draw score
+        this.ctx.font = '28px Arial';
+        this.ctx.fillText(`Final Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 50);
+        
+        // Draw respawn instruction
+        this.ctx.font = '24px Arial';
+        this.ctx.fillStyle = '#FFEB3B'; // Bright yellow color
+        this.ctx.fillText('Press SPACE or ENTER to respawn', this.canvas.width / 2, this.canvas.height * 0.7);
+    }
+    
+    private drawBossCannonTruckSilhouette(): void {
+        this.ctx.fillStyle = 'black';
+        
+        // Position the boss cannon truck at the center bottom of the screen
+        const x = this.canvas.width / 2 - 100;
+        const y = this.groundLevel - 160;
+        const width = 200;
+        const height = 160;
+        
+        // Draw boss cannon truck body
+        this.ctx.fillRect(x, y + height * 0.4, width, height * 0.6);
+        
+        // Draw boss cannon truck head
+        this.ctx.fillRect(x + width * 0.7, y, width * 0.3, height * 0.5);
+        
+        // Draw cannon
+        this.ctx.fillRect(x + width * 0.8, y + height * 0.2, width * 0.2, height * 0.3);
+        
+        // Draw wheels
+        this.ctx.fillRect(x + width * 0.1, y + height * 0.7, width * 0.2, height * 0.1);
+        this.ctx.fillRect(x + width * 0.7, y + height * 0.7, width * 0.2, height * 0.1);
+        
+        // Draw glowing red eyes
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.beginPath();
+        this.ctx.arc(x + width * 0.85, y + height * 0.2, 5, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Add glow effect to eyes
+        const glowRadius = 10;
+        const gradient = this.ctx.createRadialGradient(
+            x + width * 0.85, y + height * 0.2, 5,
+            x + width * 0.85, y + height * 0.2, glowRadius
+        );
+        gradient.addColorStop(0, 'rgba(255, 0, 0, 1)');
+        gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+        
+        this.ctx.fillStyle = gradient;
+        this.ctx.beginPath();
+        this.ctx.arc(x + width * 0.85, y + height * 0.2, glowRadius, 0, Math.PI * 2);
+        this.ctx.fill();
+    }
 }
