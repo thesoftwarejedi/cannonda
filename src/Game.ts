@@ -1056,197 +1056,359 @@ export class Game {
         this.ctx.lineWidth = 1;
         
         // Left peak contours
-        for (let y = 80; y < 350; y += 40) {
+        for (let i = 0; i < 10; i++) {
             this.ctx.beginPath();
-            this.ctx.moveTo(100, this.groundLevel - y);
-            this.ctx.quadraticCurveTo(200, this.groundLevel - y - 70, 300, this.groundLevel - y + 30);
+            this.ctx.moveTo(100, this.groundLevel - i * 30);
+            this.ctx.quadraticCurveTo(200, this.groundLevel - i * 30 - 70, 300, this.groundLevel - i * 30 + 30);
             this.ctx.stroke();
         }
         
         // Middle peak contours
-        for (let y = 150; y < 400; y += 40) {
+        for (let i = 0; i < 10; i++) {
             this.ctx.beginPath();
-            this.ctx.moveTo(450, this.groundLevel - y);
-            this.ctx.quadraticCurveTo(500, this.groundLevel - y - 50, 550, this.groundLevel - y + 20);
+            this.ctx.moveTo(450, this.groundLevel - i * 30);
+            this.ctx.quadraticCurveTo(500, this.groundLevel - i * 30 - 50, 550, this.groundLevel - i * 30 + 20);
             this.ctx.stroke();
         }
         
         // Right peak contours
-        for (let y = 100; y < 350; y += 40) {
+        for (let i = 0; i < 10; i++) {
             this.ctx.beginPath();
-            this.ctx.moveTo(700, this.groundLevel - y);
-            this.ctx.quadraticCurveTo(750, this.groundLevel - y - 40, 800, this.groundLevel - y + 20);
+            this.ctx.moveTo(700, this.groundLevel - i * 30);
+            this.ctx.quadraticCurveTo(750, this.groundLevel - i * 30 - 40, 800, this.groundLevel - i * 30 + 20);
             this.ctx.stroke();
         }
         
         // Far right peak contours
-        for (let y = 100; y < 320; y += 40) {
+        for (let i = 0; i < 10; i++) {
             this.ctx.beginPath();
-            this.ctx.moveTo(950, this.groundLevel - y);
-            this.ctx.quadraticCurveTo(980, this.groundLevel - y - 30, 1020, this.groundLevel - y + 20);
+            this.ctx.moveTo(950, this.groundLevel - i * 30);
+            this.ctx.quadraticCurveTo(980, this.groundLevel - i * 30 - 30, 1020, this.groundLevel - i * 30 + 20);
             this.ctx.stroke();
         }
     }
     
     private drawFancySkiLodge(): void {
-        // Draw a much fancier ski lodge
+        // Draw a realistic alpine ski lodge
+        
+        // Lodge positioning
         const x = this.canvas.width * 0.15;
         const y = this.groundLevel - 120;
-        const width = this.canvas.width * 0.18;
-        const height = 120;
+        const width = this.canvas.width * 0.25; // Make lodge wider
+        const height = 130; // Make lodge taller
         
-        // Main lodge structure with perspective
-        this.ctx.fillStyle = '#6B4226'; // Rich wood color
+        // Create a more realistic stone and wood texture for the main building
+        const lodgeGradient = this.ctx.createLinearGradient(x, y, x, y + height);
+        lodgeGradient.addColorStop(0, '#8B5A2B'); // Light warm wood at top
+        lodgeGradient.addColorStop(0.6, '#6B4226'); // Medium wood
+        lodgeGradient.addColorStop(1, '#5D4037');   // Dark base
+        
+        // Main lodge structure - wider, more realistic alpine shape
+        this.ctx.fillStyle = lodgeGradient;
         this.ctx.beginPath();
         this.ctx.moveTo(x, y + height); // Bottom left
         this.ctx.lineTo(x, y); // Top left
-        this.ctx.lineTo(x + width, y - 20); // Top right (higher for perspective)
-        this.ctx.lineTo(x + width, y + height - 20); // Bottom right (higher for perspective)
+        this.ctx.lineTo(x + width, y - 30); // Top right with proper alpine slant
+        this.ctx.lineTo(x + width, y + height - 30); // Bottom right
         this.ctx.closePath();
         this.ctx.fill();
         
-        // Decorative wooden beams
-        this.ctx.fillStyle = '#8B5A2B'; // Lighter wood color
-        for (let i = 0; i < 5; i++) {
-            this.ctx.fillRect(
-                x + (width * 0.2) * i,
-                y,
-                10,
-                height
-            );
+        // Stone foundation
+        const stoneHeight = 40;
+        this.ctx.fillStyle = '#6D6D6D';
+        this.ctx.fillRect(x, y + height - stoneHeight, width, stoneHeight);
+        
+        // Stone texture
+        for (let i = 0; i < width; i += 15) {
+            for (let j = 0; j < stoneHeight; j += 10) {
+                this.ctx.fillStyle = Math.random() > 0.5 ? '#5A5A5A' : '#7A7A7A';
+                this.ctx.fillRect(
+                    x + i + Math.random() * 5,
+                    y + height - stoneHeight + j + Math.random() * 5,
+                    10 + Math.random() * 5,
+                    5 + Math.random() * 5
+                );
+            }
         }
         
-        // Roof with snow
-        this.ctx.fillStyle = '#5D4037'; // Dark brown roof
+        // Alpine-style steep roof with overhangs
+        this.ctx.fillStyle = '#3E2723'; // Dark brown roof
         this.ctx.beginPath();
-        this.ctx.moveTo(x - 20, y); // Left overhang
-        this.ctx.lineTo(x + width * 0.5, y - 70); // Peak
-        this.ctx.lineTo(x + width + 20, y - 20); // Right overhang
-        this.ctx.lineTo(x + width, y - 20); // Top right corner
+        this.ctx.moveTo(x - 30, y); // Left overhang
+        this.ctx.lineTo(x + width * 0.5, y - 90); // Peak
+        this.ctx.lineTo(x + width + 30, y - 30); // Right overhang
+        this.ctx.lineTo(x + width, y - 30); // Top right corner
         this.ctx.lineTo(x, y); // Top left corner
         this.ctx.closePath();
         this.ctx.fill();
         
-        // Snow on the roof
+        // Heavy snow on the roof with icicles
         this.ctx.fillStyle = '#FFFFFF';
         this.ctx.beginPath();
-        this.ctx.moveTo(x - 20, y); // Left edge
-        this.ctx.lineTo(x + width * 0.5, y - 70); // Peak
-        this.ctx.lineTo(x + width + 20, y - 20); // Right edge
+        this.ctx.moveTo(x - 30, y); // Left edge
+        this.ctx.lineTo(x + width * 0.5, y - 90); // Peak
+        this.ctx.lineTo(x + width + 30, y - 30); // Right edge
         
         // Wavy snow edge
-        for (let i = 0; i <= 10; i++) {
-            const waveX = x - 20 + ((width + 40) * i / 10);
-            const baseY = i < 5 ? y - (i * 14) : y - (70 - (i - 5) * 10);
-            const waveY = baseY - Math.sin(i * 0.5) * 10;
+        for (let i = 0; i <= 20; i++) {
+            const waveX = x - 30 + ((width + 60) * i / 20);
+            const baseY = i < 10 ? y - (i * 9) : y - (90 - (i - 10) * 6);
+            const waveY = baseY - Math.sin(i * 0.5) * 8;
             this.ctx.lineTo(waveX, waveY);
         }
         
         this.ctx.closePath();
         this.ctx.fill();
         
-        // Windows
-        this.ctx.fillStyle = '#4FC3F7'; // Light blue windows
-        for (let i = 0; i < 3; i++) {
+        // Draw icicles
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        for (let i = 0; i < 15; i++) {
+            const icicleX = x - 20 + ((width + 40) * i / 14);
+            const icicleHeight = 10 + Math.random() * 15;
+            this.ctx.beginPath();
+            this.ctx.moveTo(icicleX - 5, y + 2);
+            this.ctx.lineTo(icicleX, y + icicleHeight);
+            this.ctx.lineTo(icicleX + 5, y + 2);
+            this.ctx.closePath();
+            this.ctx.fill();
+        }
+        
+        // Windows - more alpine style with wooden frames
+        for (let i = 0; i < 5; i++) {
             for (let j = 0; j < 2; j++) {
+                // Window background
+                this.ctx.fillStyle = '#E3F2FD'; // Light blue windows
                 this.ctx.fillRect(
-                    x + 25 + (i * 50),
-                    y + 20 + (j * 40),
-                    30,
-                    25
+                    x + 20 + (i * (width - 40) / 5),
+                    y + 20 + (j * 45),
+                    (width - 60) / 6,
+                    30
                 );
                 
                 // Window frames
                 this.ctx.strokeStyle = '#5D4037';
-                this.ctx.lineWidth = 2;
+                this.ctx.lineWidth = 3;
                 this.ctx.strokeRect(
-                    x + 25 + (i * 50),
-                    y + 20 + (j * 40),
-                    30,
-                    25
+                    x + 20 + (i * (width - 40) / 5),
+                    y + 20 + (j * 45),
+                    (width - 60) / 6,
+                    30
                 );
                 
-                // Window cross
+                // Window cross - alpine style
+                const windowX = x + 20 + (i * (width - 40) / 5);
+                const windowY = y + 20 + (j * 45);
+                const windowWidth = (width - 60) / 6;
+                
                 this.ctx.beginPath();
-                this.ctx.moveTo(x + 25 + (i * 50) + 15, y + 20 + (j * 40));
-                this.ctx.lineTo(x + 25 + (i * 50) + 15, y + 20 + (j * 40) + 25);
-                this.ctx.moveTo(x + 25 + (i * 50), y + 20 + (j * 40) + 12.5);
-                this.ctx.lineTo(x + 25 + (i * 50) + 30, y + 20 + (j * 40) + 12.5);
+                this.ctx.moveTo(windowX + windowWidth/2, windowY);
+                this.ctx.lineTo(windowX + windowWidth/2, windowY + 30);
+                this.ctx.moveTo(windowX, windowY + 15);
+                this.ctx.lineTo(windowX + windowWidth, windowY + 15);
                 this.ctx.stroke();
             }
         }
         
-        // Door
-        this.ctx.fillStyle = '#5D4037'; // Dark brown door
+        // Main entrance with proper alpine styling
+        const doorWidth = width * 0.2;
+        const doorHeight = 70;
+        const doorX = x + width * 0.4;
+        const doorY = y + height - doorHeight;
+        
+        // Door frame shadow
+        this.ctx.fillStyle = '#3E2723'; // Dark wood
         this.ctx.fillRect(
-            x + width * 0.4,
-            y + height - 50,
-            width * 0.2,
-            50
+            doorX - 5,
+            doorY - 5,
+            doorWidth + 10,
+            doorHeight + 5
         );
         
-        // Door handle
-        this.ctx.fillStyle = '#FFC107'; // Gold
+        // Door
+        this.ctx.fillStyle = '#5D4037'; // Brown door
+        this.ctx.fillRect(
+            doorX,
+            doorY,
+            doorWidth,
+            doorHeight
+        );
+        
+        // Door detailing - authentic alpine style
+        this.ctx.strokeStyle = '#3E2723';
+        this.ctx.lineWidth = 2;
+        
+        // Door panels
+        for (let i = 0; i < 2; i++) {
+            this.ctx.strokeRect(
+                doorX + 5 + (i * (doorWidth - 10) / 2),
+                doorY + 10,
+                (doorWidth - 15) / 2,
+                doorHeight - 20
+            );
+        }
+        
+        // Door handles
+        this.ctx.fillStyle = '#BF9D7A'; // Brass
         this.ctx.beginPath();
         this.ctx.arc(
-            x + width * 0.55,
-            y + height - 30,
-            5,
+            doorX + doorWidth * 0.3,
+            doorY + doorHeight * 0.5,
+            4,
+            0,
+            Math.PI * 2
+        );
+        this.ctx.fill();
+        
+        this.ctx.beginPath();
+        this.ctx.arc(
+            doorX + doorWidth * 0.7,
+            doorY + doorHeight * 0.5,
+            4,
             0,
             Math.PI * 2
         );
         this.ctx.fill();
         
         // Chimney with stone texture
-        this.ctx.fillStyle = '#7D7D7D'; // Gray chimney
+        const chimneyWidth = width * 0.12;
+        const chimneyX = x + width * 0.2;
+        const chimneyY = y - 120;
+        const chimneyHeight = 150;
+        
+        this.ctx.fillStyle = '#6D6D6D'; // Base gray
         this.ctx.fillRect(
-            x + width * 0.2,
-            y - 100,
-            width * 0.1,
-            100
+            chimneyX,
+            chimneyY,
+            chimneyWidth,
+            chimneyHeight
         );
         
         // Stone texture on chimney
-        for (let i = 0; i < 10; i++) {
-            for (let j = 0; j < 10; j++) {
-                if ((i + j) % 2 === 0) {
-                    this.ctx.fillStyle = '#555555';
-                } else {
-                    this.ctx.fillStyle = '#777777';
-                }
-                
+        for (let i = 0; i < chimneyHeight; i += 15) {
+            for (let j = 0; j < chimneyWidth; j += 10) {
+                this.ctx.fillStyle = Math.random() > 0.5 ? '#5A5A5A' : '#7A7A7A';
                 this.ctx.fillRect(
-                    x + width * 0.2 + (j * width * 0.01),
-                    y - 100 + (i * 10),
-                    width * 0.01,
-                    10
+                    chimneyX + j + Math.random() * 5,
+                    chimneyY + i + Math.random() * 5,
+                    7 + Math.random() * 3,
+                    5 + Math.random() * 10
                 );
             }
         }
         
-        // Smoke from chimney
-        this.ctx.fillStyle = 'rgba(200, 200, 200, 0.8)';
-        this.ctx.beginPath();
-        this.ctx.arc(x + width * 0.25, y - 110, 8, 0, Math.PI * 2);
-        this.ctx.arc(x + width * 0.25 - 5, y - 125, 10, 0, Math.PI * 2);
-        this.ctx.arc(x + width * 0.25 - 10, y - 145, 12, 0, Math.PI * 2);
-        this.ctx.arc(x + width * 0.25 - 15, y - 170, 15, 0, Math.PI * 2);
-        this.ctx.fill();
-        
-        // Lodge sign
-        this.ctx.fillStyle = '#8B4513';
+        // Chimney cap
+        this.ctx.fillStyle = '#4E342E';
         this.ctx.fillRect(
-            x + width * 0.3,
-            y - 20,
-            width * 0.4,
-            15
+            chimneyX - 5,
+            chimneyY,
+            chimneyWidth + 10,
+            10
         );
         
+        // Smoke from chimney - more detailed with better animation
+        const currentTime = Date.now() / 1000; // For animation
+        
+        for (let i = 0; i < 5; i++) {
+            const smokeSize = 10 + (i * 2) + Math.sin(currentTime + i) * 3;
+            const xOffset = Math.sin(currentTime * 0.5 + i * 0.5) * 10;
+            
+            this.ctx.fillStyle = `rgba(220, 220, 220, ${0.8 - i * 0.15})`;
+            this.ctx.beginPath();
+            this.ctx.arc(
+                chimneyX + chimneyWidth/2 + xOffset,
+                chimneyY - i * 15 - 10,
+                smokeSize,
+                0,
+                Math.PI * 2
+            );
+            this.ctx.fill();
+        }
+        
+        // Lodge sign
+        this.ctx.fillStyle = '#5D4037'; // Wood sign
+        this.ctx.fillRect(
+            x + width * 0.3,
+            y - 10,
+            width * 0.4,
+            20
+        );
+        
+        // Sign border
+        this.ctx.strokeStyle = '#3E2723';
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(
+            x + width * 0.3,
+            y - 10,
+            width * 0.4,
+            20
+        );
+        
+        // Sign text
         this.ctx.fillStyle = '#FFC107'; // Gold letters
-        this.ctx.font = 'bold 12px Arial';
+        this.ctx.font = 'bold 16px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        this.ctx.fillText('FERNIE ALPINE LODGE', x + width * 0.5, y - 12);
+        this.ctx.fillText('FERNIE ALPINE LODGE', x + width * 0.5, y);
+        
+        // Optional: add some warm light from windows
+        for (let i = 0; i < 5; i++) {
+            for (let j = 0; j < 2; j++) {
+                const windowX = x + 20 + (i * (width - 40) / 5) + ((width - 60) / 12);
+                const windowY = y + 35 + (j * 45);
+                
+                const lightGradient = this.ctx.createRadialGradient(
+                    windowX, windowY, 5,
+                    windowX, windowY, 40
+                );
+                lightGradient.addColorStop(0, 'rgba(255, 244, 179, 0.4)');
+                lightGradient.addColorStop(1, 'rgba(255, 244, 179, 0)');
+                
+                this.ctx.fillStyle = lightGradient;
+                this.ctx.beginPath();
+                this.ctx.arc(windowX, windowY, 40, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        }
+        
+        // Add some decorative lanterns by the door
+        this.drawLantern(doorX - 15, doorY - 5);
+        this.drawLantern(doorX + doorWidth + 15, doorY - 5);
+    }
+    
+    private drawLantern(x: number, y: number): void {
+        // Lantern post
+        this.ctx.fillStyle = '#3E2723';
+        this.ctx.fillRect(x - 2, y - 30, 4, 30);
+        
+        // Lantern frame
+        this.ctx.fillStyle = '#4E342E';
+        this.ctx.fillRect(x - 6, y - 45, 12, 15);
+        
+        // Lantern light
+        this.ctx.fillStyle = '#FFF59D';
+        this.ctx.fillRect(x - 4, y - 43, 8, 11);
+        
+        // Lantern top
+        this.ctx.fillStyle = '#3E2723';
+        this.ctx.beginPath();
+        this.ctx.moveTo(x - 8, y - 45);
+        this.ctx.lineTo(x, y - 50);
+        this.ctx.lineTo(x + 8, y - 45);
+        this.ctx.closePath();
+        this.ctx.fill();
+        
+        // Lantern glow
+        const glowGradient = this.ctx.createRadialGradient(
+            x, y - 38, 2,
+            x, y - 38, 20
+        );
+        glowGradient.addColorStop(0, 'rgba(255, 244, 179, 0.6)');
+        glowGradient.addColorStop(1, 'rgba(255, 244, 179, 0)');
+        
+        this.ctx.fillStyle = glowGradient;
+        this.ctx.beginPath();
+        this.ctx.arc(x, y - 38, 20, 0, Math.PI * 2);
+        this.ctx.fill();
     }
     
     private drawDetailedSkiLifts(): void {
