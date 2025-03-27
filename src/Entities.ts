@@ -246,7 +246,7 @@ export class CannonTruck extends GameObject {
     private fireTimer: number = 1.5; // Start halfway through cooldown so first shot comes sooner
     private fireInterval: number = 1.5; // Reduced from 3 to 1.5 seconds
     private projectileSpeed: number = -300; // Changed to negative to shoot left
-    private health: number = 2; // Now takes 2 hits to destroy
+    private health: number = 1; // Changed to 1 hit to destroy (was 2)
     
     constructor(x: number, y: number) {
         super(x, y, 90, 60, ObjectType.CannonTruck);

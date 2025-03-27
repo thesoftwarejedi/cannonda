@@ -530,16 +530,10 @@ export class Game {
                             this.markEntityForRemoval(entity);
                             
                             if (target.type === ObjectType.CannonTruck) {
-                                // For cannon trucks, check if it's destroyed (2 hits)
-                                const truck = target as CannonTruck;
-                                const isDestroyed = truck.takeDamage();
-                                
-                                if (isDestroyed) {
-                                    // Only remove and give rocks if fully destroyed
-                                    target.isActive = false;
-                                    this.markEntityForRemoval(target);
-                                    this.player.addRocks(5);
-                                }
+                                // Since cannon trucks now die in one hit, we can simplify this logic
+                                target.isActive = false;
+                                this.markEntityForRemoval(target);
+                                this.player.addRocks(5);
                             } else {
                                 // Rocks are destroyed in one hit
                                 target.isActive = false;
@@ -612,8 +606,8 @@ export class Game {
                 
                 // Check if lightning has hit the player
                 if (elk.hasActiveLightning() && this.isLightningHittingPlayer(elk)) {
-                    // Lightning hit! Take away 7 rocks
-                    const rocksLost = Math.min(7, this.player.getRockCount());
+                    // Lightning hit! Take away 2 rocks
+                    const rocksLost = Math.min(2, this.player.getRockCount());
                     this.player.addRocks(-rocksLost);
                     
                     // Mark the lightning as handled so we don't count it multiple times
