@@ -30,9 +30,16 @@ export class Game {
     private playerDead: boolean = false; // Track if player has died from elk collision
     private explosionActive: boolean = false; // Track if explosion animation is active
     private explosionTimer: number = 0; // Timer for explosion animation
-    private explosionDuration: number = 1.0; // Duration of explosion animation in seconds
+    private explosionDuration: number = 2.5; // Increased duration for more dramatic explosion effect
     private explosionParticles: {x: number, y: number, vx: number, vy: number, size: number, color: string, lifetime: number}[] = [];
     private frameTime: number = 0;
+    // Screen shake effect properties
+    private screenShakeActive: boolean = false;
+    private screenShakeIntensity: number = 0;
+    private screenShakeDuration: number = 0;
+    private screenShakeTimer: number = 0;
+    private screenShakeOffsetX: number = 0;
+    private screenShakeOffsetY: number = 0;
     
     constructor(canvasId: string) {
         this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -103,6 +110,11 @@ export class Game {
         this.frameTime = deltaTime; // Store for explosion animation
         this.lastTime = timestamp;
         
+        // Update screen shake effect if active
+        if (this.screenShakeActive) {
+            this.updateScreenShake();
+        }
+        
         // Clear the canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
@@ -115,12 +127,23 @@ export class Game {
             // Draw start screen
             this.renderStartScreen();
         } else if (this.explosionActive) {
-            // Show explosion animation
-            // Draw the background
+            // Apply screen shake effect if active
+            if (this.screenShakeActive) {
+                this.ctx.save();
+                this.ctx.translate(this.screenShakeOffsetX, this.screenShakeOffsetY);
+            }
+            
+            // Draw the background including scrolling mountains but hide player
+            this.drawBackground();
             this.renderEntities(true); // Pass true to hide the player
             
-            // Render explosion animation
+            // Render explosion animation with dramatic fire and lava effects
             this.renderExplosion();
+            
+            // Restore context if screen shake was applied
+            if (this.screenShakeActive) {
+                this.ctx.restore();
+            }
             
             // After explosion ends, show game over
             if (this.explosionTimer >= this.explosionDuration) {
@@ -545,18 +568,24 @@ export class Game {
                 entity.isActive = false;
                 this.markEntityForRemoval(entity);
                 
-                // Create explosion effect
+                // Create explosion effect with dramatic particles
                 this.createExplosion();
                 
                 // Make the player invisible during explosion
                 this.player.isActive = false;
                 
-                // Set explosion active flag
+                // Set explosion active flag and reset timer
                 this.explosionActive = true;
                 this.explosionTimer = 0;
                 
                 // Make all other elk angry when you hit one of them
                 this.makeAllElkAngry();
+                
+                // Play sound effect (if we had audio)
+                // this.playExplosionSound();
+                
+                // Shake the screen for more dramatic effect
+                this.shakeScreen();
             } else if (entity.type === ObjectType.CannonTruck || entity.type === ObjectType.Rock) {
                 // Collided with a cannon truck or rock, lose 10 rocks
                 const rocksLost = Math.min(10, this.player.getRockCount());
@@ -1169,7 +1198,7 @@ export class Game {
         
         // Stone foundation
         const stoneHeight = 40;
-        this.ctx.fillStyle = '#6D6D6D';
+        this.ctx.fillStyle = '#6D6D6D'; // Base gray
         this.ctx.fillRect(x, y + height - stoneHeight, width, stoneHeight);
         
         // Stone texture
@@ -1863,31 +1892,79 @@ export class Game {
         // Update explosion timer
         this.explosionTimer += this.frameTime;
         
-        // Draw explosion flash
-        const flashOpacity = Math.max(0, 1 - this.explosionTimer / (this.explosionDuration * 0.3));
+        // Draw background for explosion flash
+        const flashOpacity = Math.max(0, 1 - this.explosionTimer / (this.explosionDuration * 0.2));
         if (flashOpacity > 0) {
             this.ctx.save();
             this.ctx.globalAlpha = flashOpacity;
-            this.ctx.fillStyle = '#FFFFFF';
+            // Use orange-red gradient for flash effect
+            const flashGradient = this.ctx.createRadialGradient(
+                this.canvas.width / 2, this.canvas.height / 2, 0,
+                this.canvas.width / 2, this.canvas.height / 2, this.canvas.width
+            );
+            flashGradient.addColorStop(0, '#ffffff');
+            flashGradient.addColorStop(0.2, '#ffdd00');
+            flashGradient.addColorStop(0.7, '#ff5500');
+            flashGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+            
+            this.ctx.fillStyle = flashGradient;
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
             this.ctx.restore();
         }
         
-        // Draw explosion shockwave
-        const shockwaveSize = this.explosionTimer * 800; // Expand over time
-        const shockwaveOpacity = Math.max(0, 1 - this.explosionTimer / (this.explosionDuration * 0.7));
-        if (shockwaveOpacity > 0) {
-            const playerPosX = this.player.position.x;
-            const playerPosY = this.player.position.y;
+        // Draw explosive fireball at center
+        const fireballSize = 100 * (1 - Math.min(1, this.explosionTimer / (this.explosionDuration * 0.5)));
+        if (fireballSize > 0) {
+            const playerPosX = this.player.position.x + this.player.width / 2;
+            const playerPosY = this.player.position.y + this.player.height / 2;
             const centerX = playerPosX - this.cameraOffset;
             const centerY = playerPosY;
             
+            // Create a radial gradient for fireball
+            const fireballGradient = this.ctx.createRadialGradient(
+                centerX, centerY, 0,
+                centerX, centerY, fireballSize
+            );
+            fireballGradient.addColorStop(0, '#ffffff');
+            fireballGradient.addColorStop(0.1, '#ffff00');
+            fireballGradient.addColorStop(0.4, '#ff9900');
+            fireballGradient.addColorStop(0.8, '#ff3300');
+            fireballGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+            
             this.ctx.save();
-            this.ctx.globalAlpha = shockwaveOpacity;
-            this.ctx.strokeStyle = '#FF6600';
-            this.ctx.lineWidth = 10;
+            this.ctx.globalAlpha = Math.min(1, 1.5 - this.explosionTimer / this.explosionDuration);
+            this.ctx.fillStyle = fireballGradient;
             this.ctx.beginPath();
-            this.ctx.arc(centerX, centerY, shockwaveSize, 0, Math.PI * 2);
+            this.ctx.arc(centerX, centerY, fireballSize, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.restore();
+        }
+        
+        // Draw explosion shockwave
+        const shockwaveSize = this.explosionTimer * 1000; // Expand over time
+        const shockwaveOpacity = Math.max(0, 1 - this.explosionTimer / (this.explosionDuration * 0.5));
+        if (shockwaveOpacity > 0) {
+            const playerPosX = this.player.position.x;
+            const groundY = this.groundLevel;
+            
+            this.ctx.save();
+            this.ctx.globalAlpha = shockwaveOpacity * 0.7;
+            
+            // Create gradient for shockwave
+            const shockwaveGradient = this.ctx.createRadialGradient(
+                playerPosX - this.cameraOffset, groundY,
+                shockwaveSize - 10,
+                playerPosX - this.cameraOffset, groundY,
+                shockwaveSize
+            );
+            shockwaveGradient.addColorStop(0, 'rgba(255, 100, 0, 0)');
+            shockwaveGradient.addColorStop(0.5, 'rgba(255, 120, 0, 0.5)');
+            shockwaveGradient.addColorStop(1, 'rgba(255, 150, 0, 0)');
+            
+            this.ctx.strokeStyle = shockwaveGradient;
+            this.ctx.lineWidth = 20;
+            this.ctx.beginPath();
+            this.ctx.arc(playerPosX - this.cameraOffset, groundY, shockwaveSize, 0, Math.PI * 2);
             this.ctx.stroke();
             this.ctx.restore();
         }
@@ -1900,25 +1977,97 @@ export class Game {
             particle.x += particle.vx * this.frameTime;
             particle.y += particle.vy * this.frameTime;
             
+            // Add gravity effect to lava particles
+            if (particle.color.startsWith('#b') || particle.color.startsWith('#c') || 
+                particle.color.startsWith('#d') || particle.color.startsWith('#e') ||
+                particle.color.startsWith('#f')) {
+                particle.vy += 200 * this.frameTime; // Gravity
+            }
+            
             // Update lifetime
             particle.lifetime -= this.frameTime;
             
             // Draw particle
             if (particle.lifetime > 0) {
                 const alpha = Math.min(1, particle.lifetime * 2);
-                const size = particle.size * alpha; // Particles shrink as they fade
+                const size = particle.size * (0.7 + alpha * 0.3); // Particles shrink as they fade
                 
                 this.ctx.save();
                 this.ctx.globalAlpha = alpha;
+                
+                // Add glow effect to fire and lava particles
+                if (particle.color.startsWith('#f') || particle.color.startsWith('#e')) {
+                    this.ctx.shadowColor = particle.color;
+                    this.ctx.shadowBlur = 10;
+                }
+                
                 this.ctx.fillStyle = particle.color;
                 this.ctx.translate(-this.cameraOffset, 0);
-                this.ctx.fillRect(particle.x - size/2, particle.y - size/2, size, size);
+                
+                // Use circles for fire/lava particles, rectangles for debris
+                if (particle.color === '#e74c3c') {
+                    // Truck debris
+                    this.ctx.fillRect(particle.x - size/2, particle.y - size/2, size, size);
+                } else {
+                    // Fire and lava particles as circles with glow
+                    this.ctx.beginPath();
+                    this.ctx.arc(particle.x, particle.y, size/2, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+                
                 this.ctx.restore();
             }
         }
         
         // Remove dead particles
         this.explosionParticles = this.explosionParticles.filter(p => p.lifetime > 0);
+        
+        // Draw lava pool at the bottom if explosion has progressed enough
+        if (this.explosionTimer > 0.2 && this.explosionTimer < this.explosionDuration * 0.8) {
+            const lavaPoolOpacity = Math.min(1, (this.explosionTimer - 0.2) * 2);
+            const playerPosX = this.player.position.x;
+            const groundY = this.groundLevel;
+            
+            this.ctx.save();
+            this.ctx.globalAlpha = lavaPoolOpacity;
+            
+            // Create gradient for lava pool
+            const lavaGradient = this.ctx.createRadialGradient(
+                playerPosX - this.cameraOffset, groundY,
+                0,
+                playerPosX - this.cameraOffset, groundY,
+                80 + this.explosionTimer * 50
+            );
+            lavaGradient.addColorStop(0, '#ffcc00');
+            lavaGradient.addColorStop(0.3, '#ff6600');
+            lavaGradient.addColorStop(0.7, '#cc3300');
+            lavaGradient.addColorStop(1, '#aa0000');
+            
+            this.ctx.fillStyle = lavaGradient;
+            this.ctx.beginPath();
+            this.ctx.ellipse(
+                playerPosX - this.cameraOffset,
+                groundY,
+                80 + this.explosionTimer * 50,
+                30 + this.explosionTimer * 20,
+                0, 0, Math.PI * 2
+            );
+            this.ctx.fill();
+            
+            // Add bubbly effect to lava pool
+            for (let i = 0; i < 5; i++) {
+                const bubbleX = playerPosX - this.cameraOffset + (Math.random() * 160 - 80);
+                const bubbleY = groundY - (Math.random() * 10);
+                const bubbleSize = 5 + Math.random() * 10;
+                
+                this.ctx.fillStyle = '#ffdd00';
+                this.ctx.beginPath();
+                this.ctx.arc(bubbleX, bubbleY, bubbleSize, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+            
+            this.ctx.restore();
+        }
     }
     
     private createExplosion(): void {
@@ -1928,12 +2077,12 @@ export class Game {
         const centerX = this.player.position.x + this.player.width / 2;
         const centerY = this.player.position.y + this.player.height / 2;
         
-        // Create truck debris pieces
-        const numDebris = 30;
+        // Create more truck debris pieces for a bigger explosion
+        const numDebris = 60; 
         for (let i = 0; i < numDebris; i++) {
-            const angle = Math.random() * Math.PI * 2; // Random angle
-            const speed = 100 + Math.random() * 300; // Random speed
-            const size = 3 + Math.random() * 7; // Random size 
+            const angle = Math.random() * Math.PI * 2; 
+            const speed = 150 + Math.random() * 350; 
+            const size = 5 + Math.random() * 10; 
             
             this.explosionParticles.push({
                 x: centerX,
@@ -1941,20 +2090,20 @@ export class Game {
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
                 size,
-                color: '#e74c3c', // Red for truck pieces
-                lifetime: 0.5 + Math.random() * 1.5
+                color: '#e74c3c', 
+                lifetime: 0.8 + Math.random() * 1.8 
             });
         }
         
-        // Create fire/spark particles
-        const numParticles = 70;
+        // Create more fire/spark particles
+        const numParticles = 120; 
         for (let i = 0; i < numParticles; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const speed = 50 + Math.random() * 200;
-            const size = 2 + Math.random() * 5;
+            const speed = 80 + Math.random() * 250; 
+            const size = 4 + Math.random() * 8; 
             
-            // Choose random color from fire palette
-            const colors = ['#ff5722', '#ff9800', '#ffeb3b', '#ffc107'];
+            // Choose random color from fire palette with more intense colors
+            const colors = ['#ff0000', '#ff3300', '#ff5500', '#ff7700', '#ff9900', '#ffaa00', '#ffcc00']; 
             const color = colors[Math.floor(Math.random() * colors.length)];
             
             this.explosionParticles.push({
@@ -1964,19 +2113,41 @@ export class Game {
                 vy: Math.sin(angle) * speed,
                 size,
                 color,
-                lifetime: 0.5 + Math.random() * 0.5
+                lifetime: 0.7 + Math.random() * 0.8 
+            });
+        }
+        
+        // Add lava particles that spread outward and fall
+        const numLava = 80; 
+        for (let i = 0; i < numLava; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 50 + Math.random() * 200;
+            const size = 6 + Math.random() * 12; 
+            
+            // Lava colors (red-orange gradient)
+            const lavaColors = ['#bb0000', '#cc3300', '#dd4400', '#ee5500', '#ff6600'];
+            const color = lavaColors[Math.floor(Math.random() * lavaColors.length)];
+            
+            this.explosionParticles.push({
+                x: centerX,
+                y: centerY,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed + 200, 
+                size,
+                color,
+                lifetime: 1.2 + Math.random() * 1.0 
             });
         }
         
         // Add some smoke particles that rise upward
-        const numSmoke = 20;
+        const numSmoke = 40; 
         for (let i = 0; i < numSmoke; i++) {
-            const angle = -Math.PI/2 + (Math.random() * 0.8 - 0.4); // Mostly upward
-            const speed = 30 + Math.random() * 70; // Slower than debris
-            const size = 8 + Math.random() * 15; // Larger particles
+            const angle = -Math.PI/2 + (Math.random() * 0.8 - 0.4); 
+            const speed = 40 + Math.random() * 80; 
+            const size = 10 + Math.random() * 20; 
             
-            // Gray smoke with varying opacity
-            const grayValue = 100 + Math.floor(Math.random() * 100);
+            // Dark smoke with varying opacity
+            const grayValue = 60 + Math.floor(Math.random() * 80); 
             const color = `rgb(${grayValue},${grayValue},${grayValue})`;
             
             this.explosionParticles.push({
@@ -1986,8 +2157,52 @@ export class Game {
                 vy: Math.sin(angle) * speed,
                 size,
                 color,
-                lifetime: 1.0 + Math.random() * 1.0
+                lifetime: 1.5 + Math.random() * 1.5 
+            });
+        }
+        
+        // Add explosion ring
+        for (let i = 0; i < 36; i++) {
+            const angle = (i / 36) * Math.PI * 2;
+            const speed = 300;
+            const size = 8;
+            
+            this.explosionParticles.push({
+                x: centerX,
+                y: centerY,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                size,
+                color: '#ffdd00', 
+                lifetime: 0.5
             });
         }
     }
+    
+    private shakeScreen(): void {
+        this.screenShakeActive = true;
+        this.screenShakeIntensity = 20; // Maximum shake amount in pixels
+        this.screenShakeDuration = 1.5; // Seconds to shake for
+        this.screenShakeTimer = 0;
+    }
+    
+    private updateScreenShake(): void {
+        this.screenShakeTimer += this.frameTime;
+        
+        if (this.screenShakeTimer >= this.screenShakeDuration) {
+            // Stop shaking after duration
+            this.screenShakeActive = false;
+            this.screenShakeOffsetX = 0;
+            this.screenShakeOffsetY = 0;
+            return;
+        }
+        
+        // Calculate shake intensity based on remaining time (gradually reduces)
+        const remainingShakeFactor = 1 - (this.screenShakeTimer / this.screenShakeDuration);
+        const currentIntensity = this.screenShakeIntensity * remainingShakeFactor;
+        
+        // Apply random shake offset
+        this.screenShakeOffsetX = (Math.random() * 2 - 1) * currentIntensity;
+        this.screenShakeOffsetY = (Math.random() * 2 - 1) * currentIntensity;
+     }
 }
