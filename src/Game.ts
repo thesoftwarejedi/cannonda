@@ -49,9 +49,10 @@ export class Game {
         this.ground = new Ground(0, this.groundLevel, this.canvas.width * 2, 50);
         this.entities.push(this.ground);
         
-        // Create player - position it higher to prevent wheels from being in the ground
-        // The height needs to account for the wheel radius which is 20% of the player height
-        this.player = new Player(this.canvas.width * 0.3, this.groundLevel - 80);  
+        // Create player - ensure wheels sit ON the ground, not IN it
+        const playerHeight = 50; // Player height is 50 pixels
+        const wheelRadius = playerHeight * 0.2; // Wheel radius is 20% of height
+        this.player = new Player(this.canvas.width * 0.3, this.groundLevel - playerHeight - wheelRadius);
         this.entities.push(this.player);
     }
     
@@ -67,7 +68,9 @@ export class Game {
             
             // Update player position if it exists
             if (this.player) {
-                this.player.position.y = this.groundLevel - this.player.height;
+                // Position player with wheels on ground - account for wheel radius (20% of player height)
+                const wheelRadius = this.player.height * 0.2;
+                this.player.position.y = this.groundLevel - this.player.height - wheelRadius;
             }
         } else {
             this.groundLevel = this.canvas.height - 50;
@@ -209,12 +212,12 @@ export class Game {
         const targetX = this.canvas.width * 0.3;
         this.player.position.x = targetX;
         
-        // Check ground collision for player
-        if (this.player.position.y + this.player.height >= this.groundLevel) {
-            this.player.position = new Vector2D(
-                this.player.position.x, 
-                this.groundLevel - this.player.height
-            );
+        // Check ground collision for player - account for wheel radius (20% of player height)
+        const wheelRadius = this.player.height * 0.2;
+        const groundCollisionY = this.groundLevel - this.player.height - wheelRadius;
+        
+        if (this.player.position.y > groundCollisionY) {
+            this.player.position.y = groundCollisionY;
             this.player.setOnGround(true);
         } else {
             this.player.setOnGround(false);
@@ -617,9 +620,9 @@ export class Game {
         this.entities = [this.player, this.ground];
         this.entitiesToRemove = [];
         
-        // Reset player - position it higher to prevent wheels from being in the ground
-        // The height needs to account for the wheel radius which is 20% of the player height
-        this.player.reset(this.canvas.width * 0.3, this.groundLevel - this.player.height - this.player.height * 0.2);
+        // Reset player - ensure wheels are properly positioned on the ground
+        const wheelRadius = this.player.height * 0.2; // Wheel radius is 20% of player height
+        this.player.reset(this.canvas.width * 0.3, this.groundLevel - this.player.height - wheelRadius);
         
         // Reset score
         this.score = 0;
@@ -1081,7 +1084,8 @@ export class Game {
         for (let i = 0; i < 10; i++) {
             this.ctx.beginPath();
             this.ctx.moveTo(450, this.groundLevel - i * 30);
-            this.ctx.quadraticCurveTo(500, this.groundLevel - i * 30 - 50, 550, this.groundLevel - i * 30 + 20);
+            this.ctx.lineTo(500, this.groundLevel - i * 30 - 50);
+            this.ctx.lineTo(550, this.groundLevel - i * 30 + 20);
             this.ctx.stroke();
         }
         
@@ -1089,7 +1093,8 @@ export class Game {
         for (let i = 0; i < 10; i++) {
             this.ctx.beginPath();
             this.ctx.moveTo(700, this.groundLevel - i * 30);
-            this.ctx.quadraticCurveTo(750, this.groundLevel - i * 30 - 40, 800, this.groundLevel - i * 30 + 20);
+            this.ctx.lineTo(750, this.groundLevel - i * 30 - 40);
+            this.ctx.lineTo(800, this.groundLevel - i * 30 + 20);
             this.ctx.stroke();
         }
         
@@ -1097,7 +1102,8 @@ export class Game {
         for (let i = 0; i < 10; i++) {
             this.ctx.beginPath();
             this.ctx.moveTo(950, this.groundLevel - i * 30);
-            this.ctx.quadraticCurveTo(980, this.groundLevel - i * 30 - 30, 1020, this.groundLevel - i * 30 + 20);
+            this.ctx.lineTo(980, this.groundLevel - i * 30 - 30);
+            this.ctx.lineTo(1020, this.groundLevel - i * 30 + 20);
             this.ctx.stroke();
         }
     }
@@ -1164,7 +1170,7 @@ export class Game {
         this.ctx.lineTo(x + width + 30, y - 30); // Right edge
         
         // Wavy snow edge
-        for (let i = 0; i <= 20; i++) {
+        for (let i = 0; i < 20; i++) {
             const waveX = x - 30 + ((width + 60) * i / 20);
             const baseY = i < 10 ? y - (i * 9) : y - (90 - (i - 10) * 6);
             const waveY = baseY - Math.sin(i * 0.5) * 8;
