@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cannonda</title>
     <style>
         body {
@@ -14,12 +14,20 @@
             background-color: #2c3e50;
             height: 100vh;
             overflow: hidden;
+            touch-action: none; /* Prevent browser default touch actions */
+            -webkit-touch-callout: none; /* Prevent callouts */
+            -webkit-user-select: none; /* Prevent selection */
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
         canvas {
             display: block;
             width: 100vw;
             height: 100vh;
             background-color: #87CEEB;
+            touch-action: none; /* Prevent default touch actions on canvas */
         }
         #game-container {
             position: relative;
@@ -35,6 +43,80 @@
             font-size: 24px;
             z-index: 100;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            display: none; /* Hide the old score display */
+        }
+        #stats-panel {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            padding: 10px 15px;
+            color: white;
+            font-family: 'Arial', sans-serif;
+            z-index: 100;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            min-width: 200px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        #stats-panel h3 {
+            margin: 0 0 8px 0;
+            color: #ffcc00;
+            font-size: 18px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+        #stats-panel .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+        #stats-panel .stat-label {
+            color: #8ef9ff;
+        }
+        #stats-panel .stat-value {
+            font-weight: bold;
+        }
+        /* Progress bar for Fernie journey */
+        #fernie-progress-container {
+            margin-top: 5px;
+            margin-bottom: 10px;
+        }
+        #fernie-progress-bar {
+            height: 8px;
+            width: 100%;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        #fernie-progress-fill {
+            height: 100%;
+            background: linear-gradient(to right, #3498db, #2ecc71);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        /* Add progress bar for boss health */
+        #boss-health-container {
+            display: none;
+            margin-top: 8px;
+        }
+        #boss-health-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+        #boss-health-bar {
+            height: 10px;
+            width: 100%;
+            background: #333;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        #boss-health-fill {
+            height: 100%;
+            background: linear-gradient(to right, #ff0000, #ff5500);
+            width: 100%;
+            transition: width 0.3s ease;
         }
         #instructions {
             position: absolute;
@@ -50,7 +132,31 @@
 </head>
 <body>
     <div id="game-container">
-        <div id="score-display">Score: 0</div>
+        <div id="stats-panel">
+            <h3>Game Stats</h3>
+            <div class="stat-row">
+                <span class="stat-label">Progress to Fernie:</span>
+                <span class="stat-value"><span id="cannon-trucks-destroyed">0</span>/25</span>
+            </div>
+            <div id="fernie-progress-container">
+                <div id="fernie-progress-bar">
+                    <div id="fernie-progress-fill"></div>
+                </div>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Score:</span>
+                <span class="stat-value" id="score">0</span>
+            </div>
+            <div id="boss-health-container">
+                <div id="boss-health-label">
+                    <span class="stat-label">Boss Health:</span>
+                    <span class="stat-value" id="boss-health">100%</span>
+                </div>
+                <div id="boss-health-bar">
+                    <div id="boss-health-fill"></div>
+                </div>
+            </div>
+        </div>
         <div id="instructions">
             Controls: Left/Right Arrows to move, Up Arrow to jump, Down Arrow to shoot
         </div>

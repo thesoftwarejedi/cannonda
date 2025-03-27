@@ -8,15 +8,19 @@ export class Game {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
     private inputManager: InputManager;
-    private player: Player;
-    private entities: GameObject[];
+    private player: Player | null = null;
+    private entities: GameObject[] = [];
     private lastTime: number = 0;
     private running: boolean = false;
     private score: number = 0;
     private scoreElement: HTMLElement;
+    private cannonTrucksDestroyedElement: HTMLElement;
+    private bossHealthElement: HTMLElement | null = null;
+    private bossHealthFillElement: HTMLElement | null = null;
+    private bossHealthContainer: HTMLElement | null = null;
     private spawnTimer: number = 0;
-    private groundLevel: number;
-    private ground: Ground;
+    private groundLevel: number = 0;
+    private ground: Ground | null = null;
     private entitiesToRemove: GameObject[] = [];
     private cameraOffset: number = 0;
     private scrollSpeed: number = 100; // Base speed in pixels per second
@@ -50,46 +54,100 @@ export class Game {
         this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
         this.inputManager = new InputManager();
         this.entities = [];
-        this.entitiesToRemove = [];
-        this.scoreElement = document.getElementById('score-display') as HTMLElement;
         
-        // Set canvas to window size
+        // Get UI elements
+        this.scoreElement = document.getElementById('score') as HTMLElement;
+        this.cannonTrucksDestroyedElement = document.getElementById('cannon-trucks-destroyed') as HTMLElement;
+        this.bossHealthElement = document.getElementById('boss-health');
+        this.bossHealthFillElement = document.getElementById('boss-health-fill');
+        this.bossHealthContainer = document.getElementById('boss-health-container');
+        
+        // Set up canvas size
         this.resizeCanvas();
-        
-        // Setup resize listener
         window.addEventListener('resize', this.resizeCanvas.bind(this));
         
-        this.groundLevel = this.canvas.height - 50;
-        
-        // Create ground
+        // Set up ground
         this.ground = new Ground(0, this.groundLevel, this.canvas.width * 2, 50);
         this.entities.push(this.ground);
         
-        // Create player - ensure wheels sit ON the ground, not IN it
-        const playerHeight = 50; // Player height is 50 pixels
-        const wheelRadius = playerHeight * 0.2; // Wheel radius is 20% of height
-        this.player = new Player(this.canvas.width * 0.3, this.groundLevel - playerHeight - wheelRadius);
+        // Create player
+        this.createPlayer();
+        
+        // Start the game loop
+        this.start();
+    }
+    
+    // Device scaling factor to adjust game elements based on screen size
+    private getScaleFactor(): number {
+        // Base scale on a reference width - make game elements smaller on smaller screens
+        const referenceWidth = 1280; // Base game width
+        return Math.max(0.6, Math.min(1, window.innerWidth / referenceWidth));
+    }
+    
+    private createPlayer(): void {
+        const scaleFactor = this.getScaleFactor();
+        const playerHeight = 50 * scaleFactor;
+        const playerWidth = 80 * scaleFactor;
+        const wheelRadius = playerHeight * 0.2;
+        
+        this.player = new Player(
+            this.canvas.width * 0.3, 
+            this.groundLevel - playerHeight - wheelRadius
+        );
+        
+        // Apply scaling to player
+        this.player.setDimensions(playerWidth, playerHeight);
+        
         this.entities.push(this.player);
     }
     
     private resizeCanvas(): void {
+        // Save current position ratio of player in case it exists
+        let playerXRatio = 0;
+        if (this.player) {
+            playerXRatio = this.player.position.x / this.canvas.width;
+        }
+        
+        // Set canvas to full screen
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
         
-        // Update ground level when resizing
+        // Get scale factor for responsive sizing
+        const scaleFactor = this.getScaleFactor();
+        
+        // Update ground level when resizing - place higher on smaller screens
+        this.groundLevel = this.canvas.height - (50 * scaleFactor);
+        
+        // Update ground
         if (this.ground) {
-            this.groundLevel = this.canvas.height - 50;
             this.ground.position.y = this.groundLevel;
             this.ground.width = this.canvas.width * 2;
+            this.ground.height = 50 * scaleFactor;
+        }
+        
+        // Update player position and size if it exists
+        if (this.player) {
+            // Update player dimensions
+            const playerHeight = 50 * scaleFactor;
+            const playerWidth = 80 * scaleFactor;
+            this.player.setDimensions(playerWidth, playerHeight);
             
-            // Update player position if it exists
-            if (this.player) {
-                // Position player with wheels on ground - account for wheel radius (20% of player height)
-                const wheelRadius = this.player.height * 0.2;
-                this.player.position.y = this.groundLevel - this.player.height - wheelRadius;
+            // Position player with wheels on ground - account for wheel radius
+            const wheelRadius = playerHeight * 0.2;
+            
+            // Keep horizontal position ratio the same
+            this.player.position.x = playerXRatio * this.canvas.width;
+            this.player.position.y = this.groundLevel - playerHeight - wheelRadius;
+        }
+        
+        // Scale other entities
+        for (const entity of this.entities) {
+            if (entity !== this.player && entity !== this.ground) {
+                // Only scale dimensions, not position (those update naturally)
+                const originalWidth = entity.width / scaleFactor;
+                const originalHeight = entity.height / scaleFactor;
+                entity.setDimensions(originalWidth * scaleFactor, originalHeight * scaleFactor);
             }
-        } else {
-            this.groundLevel = this.canvas.height - 50;
         }
     }
     
@@ -185,8 +243,10 @@ export class Game {
             this.removeMarkedEntities();
             
             // Update score display
-            if (this.scoreElement) {
-                this.scoreElement.textContent = `Score: ${this.score} | Rocks: ${this.player.getRockCount()}`;
+            if (this.scoreElement && !this.reachedFernie && this.player) {
+                this.scoreElement.textContent = `Score: ${this.score} | Rocks: ${this.player?.getRockCount() || 0} | Fernie: ${this.cannonTrucksDestroyed}/25`;
+            } else if (this.scoreElement && this.reachedFernie) {
+                this.scoreElement.textContent = `Score: ${this.score} | Rocks: ${this.player?.getRockCount() || 0} | Fernie Alpine Resort!`;
             }
             
             // Check for lightning hits
@@ -196,10 +256,13 @@ export class Game {
             this.renderEntities();
         }
         
+        // Update stats panel
+        this.updateStats();
+        
         // Handle input post-update
         this.inputManager.clearEvents();
         
-        // Continue game loop if running
+        // Request next animation frame if game is still running
         if (this.running) {
             requestAnimationFrame(this.gameLoop.bind(this));
         }
@@ -281,21 +344,28 @@ export class Game {
         }
         
         // Update player
-        this.player.update(deltaTime, this.inputManager, this.addEntity.bind(this));
+        if (this.player) {
+            this.player.update(deltaTime, this.inputManager, this.addEntity.bind(this));
+        }
         
         // Keep player centered horizontally at about 30% of screen width
         const targetX = this.canvas.width * 0.3;
-        this.player.position.x = targetX;
+        if (this.player) {
+            this.player.position.x = targetX;
+        }
         
         // Check ground collision for player - account for wheel radius (20% of player height)
-        const wheelRadius = this.player.height * 0.2;
-        const groundCollisionY = this.groundLevel - this.player.height - wheelRadius;
+        const wheelRadius = this.player ? this.player.height * 0.2 : 0;
         
-        if (this.player.position.y > groundCollisionY) {
-            this.player.position.y = groundCollisionY;
-            this.player.setOnGround(true);
+        if (this.player && this.player.position.y > this.groundLevel - (this.player.height + wheelRadius)) {
+            if (this.player) {
+                this.player.position.y = this.groundLevel - this.player.height - wheelRadius;
+                this.player.setOnGround(true);
+            }
         } else {
-            this.player.setOnGround(false);
+            if (this.player) {
+                this.player.setOnGround(false);
+            }
         }
         
         // Update all other entities
@@ -308,7 +378,7 @@ export class Game {
             // Update entity based on type
             if (entity.type === ObjectType.Elk) {
                 // Pass player position to elk for lightning attacks
-                (entity as Elk).update(deltaTime, this.groundLevel, this.player.position);
+                (entity as Elk).update(deltaTime, this.groundLevel, this.player ? this.player.position : new Vector2D(0, 0));
             } else if (entity.type === ObjectType.CannonTruck) {
                 (entity as CannonTruck).update(deltaTime, this.spawnProjectile.bind(this));
             } else {
@@ -412,10 +482,10 @@ export class Game {
         this.ctx.fillRect(0, this.groundLevel, this.canvas.width, this.canvas.height - this.groundLevel);
         
         // Update score display to show progress to Fernie
-        if (this.scoreElement && !this.reachedFernie) {
-            this.scoreElement.textContent = `Score: ${this.score} | Rocks: ${this.player.getRockCount()} | Fernie: ${this.cannonTrucksDestroyed}/25`;
+        if (this.scoreElement && !this.reachedFernie && this.player) {
+            this.scoreElement.textContent = `Score: ${this.score} | Rocks: ${this.player?.getRockCount() || 0} | Fernie: ${this.cannonTrucksDestroyed}/25`;
         } else if (this.scoreElement && this.reachedFernie) {
-            this.scoreElement.textContent = `Score: ${this.score} | Rocks: ${this.player.getRockCount()} | Fernie Alpine Resort!`;
+            this.scoreElement.textContent = `Score: ${this.score} | Rocks: ${this.player?.getRockCount() || 0} | Fernie Alpine Resort!`;
         }
         
         // Render all game entities
@@ -614,7 +684,7 @@ export class Game {
         if (entity === this.player || entity === this.ground || !entity.isActive) return;
         
         // Handle collisions between the player and the entity
-        if (this.player.intersects(entity)) {
+        if (this.player && this.player.intersects(entity)) {
             if (entity.type === ObjectType.Elk) {
                 // Hitting an elk creates an explosion and ends the game
                 entity.isActive = false;
@@ -624,7 +694,9 @@ export class Game {
                 this.createExplosion();
                 
                 // Make the player invisible during explosion
-                this.player.isActive = false;
+                if (this.player) {
+                    this.player.isActive = false;
+                }
                 
                 // Set explosion active flag and reset timer
                 this.explosionActive = true;
@@ -644,8 +716,10 @@ export class Game {
                 const isBossCannonTruck = entity instanceof BossCannonTruck;
                 
                 // Collided with a cannon truck or rock, lose 10 rocks
-                const rocksLost = Math.min(10, this.player.getRockCount());
-                this.player.addRocks(-rocksLost);
+                const rocksLost = Math.min(10, this.player?.getRockCount() || 0);
+                if (this.player) {
+                    this.player.addRocks(-rocksLost);
+                }
                 
                 // If it's the boss truck, game over immediately
                 if (isBossCannonTruck) {
@@ -654,7 +728,9 @@ export class Game {
                     this.isPlayerExplosion = true;
                     
                     // Make the player invisible during explosion
-                    this.player.isActive = false;
+                    if (this.player) {
+                        this.player.isActive = false;
+                    }
                     
                     // Set explosion active flag and reset timer
                     this.explosionActive = true;
@@ -675,7 +751,7 @@ export class Game {
                 this.markEntityForRemoval(entity);
                 
                 // Game over if no rocks left
-                if (this.player.getRockCount() <= 0) {
+                if (this.player && this.player.getRockCount() <= 0) {
                     // Add a small delay before showing the game over alert
                     setTimeout(() => {
                         alert(`Game Over! Your final score is ${this.score}`);
@@ -714,7 +790,9 @@ export class Game {
                                 if (isDestroyed) {
                                     target.isActive = false;
                                     this.markEntityForRemoval(target);
-                                    this.player.addRocks(isBossCannonTruck ? 20 : 5); // More rocks for boss
+                                    if (this.player) {
+                                        this.player.addRocks(isBossCannonTruck ? 20 : 5); // More rocks for boss
+                                    }
                                     this.cannonTrucksDestroyed++;
                                     
                                     // If it was the boss, mark it as destroyed
@@ -767,18 +845,30 @@ export class Game {
     }
     
     private reset(): void {
-        // Clear all entities except player and ground
-        this.entities = [this.player, this.ground];
+        // Clear all entities
+        this.entities = [];
         this.entitiesToRemove = [];
         
+        // Add ground back to entities
+        if (this.ground) {
+            this.entities.push(this.ground);
+        }
+        
         // Reset player - ensure wheels are properly positioned on the ground
-        const wheelRadius = this.player.height * 0.2; // Wheel radius is 20% of player height
-        this.player.reset(this.canvas.width * 0.3, this.groundLevel - this.player.height - wheelRadius);
-        this.player.isActive = true; // Make player visible again
+        const wheelRadius = this.player ? this.player.height * 0.2 : 0; // Wheel radius is 20% of player height
+        if (this.player) {
+            this.player.reset(this.canvas.width * 0.3, this.groundLevel - this.player.height - wheelRadius);
+            this.player.isActive = true; // Make player visible again
+            this.entities.push(this.player);
+        }
         
         // Reset score
         this.score = 0;
-        this.scoreElement.textContent = `Score: ${this.score} | Rocks: ${this.player.getRockCount()}`;
+        if (this.scoreElement && this.player) {
+            this.scoreElement.textContent = `Score: ${this.score} | Rocks: ${this.player?.getRockCount() || 0}`;
+        } else if (this.scoreElement) {
+            this.scoreElement.textContent = `Score: ${this.score}`;
+        }
         
         // Reset camera
         this.cameraOffset = 0;
@@ -802,6 +892,9 @@ export class Game {
     }
     
     private checkLightningHits(): void {
+        // If player is null, no need to check for lightning hits
+        if (!this.player) return;
+        
         // Loop through all elk to check their lightning
         for (const entity of this.entities) {
             if (entity.type === ObjectType.Elk && entity.isActive) {
@@ -809,15 +902,17 @@ export class Game {
                 
                 // Check if lightning has hit the player
                 if (elk.hasActiveLightning() && this.isLightningHittingPlayer(elk)) {
-                    // Lightning hit! Take away 2 rocks
-                    const rocksLost = Math.min(10, this.player.getRockCount());
-                    this.player.addRocks(-rocksLost);
+                    // Lightning hit! Take away 10 rocks
+                    const rocksLost = Math.min(10, this.player?.getRockCount() || 0);
+                    if (this.player) {
+                        this.player.addRocks(-rocksLost);
+                    }
                     
                     // Mark the lightning as handled so we don't count it multiple times
                     elk.markLightningHit();
                     
                     // Game over if no rocks left
-                    if (this.player.getRockCount() <= 0) {
+                    if (this.player && this.player.getRockCount() <= 0) {
                         setTimeout(() => {
                             alert(`Game Over! Your final score is ${this.score}`);
                             this.reset();
@@ -829,6 +924,9 @@ export class Game {
     }
     
     private isLightningHittingPlayer(elk: Elk): boolean {
+        // If player is null, lightning can't hit it
+        if (!this.player) return false;
+        
         // Calculate a hit box from the elk to the player
         // This assumes the lightning travels in a relatively straight line
         const elkPosition = new Vector2D(
@@ -1002,7 +1100,7 @@ export class Game {
         
         // Player stats
         this.ctx.fillText(
-            `Cannon Trucks Destroyed: ${this.cannonTrucksDestroyed} | Remaining Rocks: ${this.player.getRockCount()}`,
+            `Cannon Trucks Destroyed: ${this.cannonTrucksDestroyed} | Remaining Rocks: ${this.player?.getRockCount() || 0}`,
             this.canvas.width / 2,
             bannerY + 25
         );
@@ -1346,6 +1444,7 @@ export class Game {
         for (let i = 0; i < 15; i++) {
             const icicleX = x - 20 + ((width + 40) * i / 14);
             const icicleHeight = 10 + Math.random() * 15;
+            
             this.ctx.beginPath();
             this.ctx.moveTo(icicleX - 5, y + 2);
             this.ctx.lineTo(icicleX, y + icicleHeight);
@@ -2013,10 +2112,8 @@ export class Game {
         // Draw explosive fireball at center
         const fireballSize = 100 * (1 - Math.min(1, this.explosionTimer / (this.explosionDuration * 0.5)));
         if (fireballSize > 0) {
-            const playerPosX = this.player.position.x + this.player.width / 2;
-            const playerPosY = this.player.position.y + this.player.height / 2;
-            const centerX = playerPosX - this.cameraOffset;
-            const centerY = playerPosY;
+            const centerX = this.canvas.width / 2;
+            const centerY = this.canvas.height / 2;
             
             // Create a radial gradient for fireball
             const fireballGradient = this.ctx.createRadialGradient(
@@ -2042,17 +2139,17 @@ export class Game {
         const shockwaveSize = this.explosionTimer * 1000; // Expand over time
         const shockwaveOpacity = Math.max(0, 1 - this.explosionTimer / (this.explosionDuration * 0.5));
         if (shockwaveOpacity > 0) {
-            const playerPosX = this.player.position.x;
-            const groundY = this.groundLevel;
+            const centerX = this.canvas.width / 2;
+            const centerY = this.canvas.height / 2;
             
             this.ctx.save();
             this.ctx.globalAlpha = shockwaveOpacity * 0.7;
             
             // Create gradient for shockwave
             const shockwaveGradient = this.ctx.createRadialGradient(
-                playerPosX - this.cameraOffset, groundY,
+                centerX, centerY,
                 shockwaveSize - 10,
-                playerPosX - this.cameraOffset, groundY,
+                centerX, centerY,
                 shockwaveSize
             );
             shockwaveGradient.addColorStop(0, 'rgba(255, 100, 0, 0)');
@@ -2062,7 +2159,7 @@ export class Game {
             this.ctx.strokeStyle = shockwaveGradient;
             this.ctx.lineWidth = 20;
             this.ctx.beginPath();
-            this.ctx.arc(playerPosX - this.cameraOffset, groundY, shockwaveSize, 0, Math.PI * 2);
+            this.ctx.arc(centerX, centerY, shockwaveSize, 0, Math.PI * 2);
             this.ctx.stroke();
             this.ctx.restore();
         }
@@ -2123,17 +2220,17 @@ export class Game {
         // Draw lava pool at the bottom if explosion has progressed enough
         if (this.explosionTimer > 0.2 && this.explosionTimer < this.explosionDuration * 0.8) {
             const lavaPoolOpacity = Math.min(1, (this.explosionTimer - 0.2) * 2);
-            const playerPosX = this.player.position.x;
-            const groundY = this.groundLevel;
+            const centerX = this.canvas.width / 2;
+            const centerY = this.canvas.height / 2;
             
             this.ctx.save();
             this.ctx.globalAlpha = lavaPoolOpacity;
             
             // Create gradient for lava pool
             const lavaGradient = this.ctx.createRadialGradient(
-                playerPosX - this.cameraOffset, groundY,
+                centerX, centerY,
                 0,
-                playerPosX - this.cameraOffset, groundY,
+                centerX, centerY,
                 80 + this.explosionTimer * 50
             );
             lavaGradient.addColorStop(0, '#ffcc00');
@@ -2144,8 +2241,8 @@ export class Game {
             this.ctx.fillStyle = lavaGradient;
             this.ctx.beginPath();
             this.ctx.ellipse(
-                playerPosX - this.cameraOffset,
-                groundY,
+                centerX,
+                centerY,
                 80 + this.explosionTimer * 50,
                 30 + this.explosionTimer * 20,
                 0, 0, Math.PI * 2
@@ -2154,8 +2251,8 @@ export class Game {
             
             // Add bubbly effect to lava pool
             for (let i = 0; i < 5; i++) {
-                const bubbleX = playerPosX - this.cameraOffset + (Math.random() * 160 - 80);
-                const bubbleY = groundY - (Math.random() * 10);
+                const bubbleX = centerX + (Math.random() * 160 - 80);
+                const bubbleY = centerY - (Math.random() * 10);
                 const bubbleSize = 5 + Math.random() * 10;
                 
                 this.ctx.fillStyle = '#ffdd00';
@@ -2215,6 +2312,16 @@ export class Game {
         // Set explosion active flag and reset timer
         this.explosionActive = true;
         this.explosionTimer = 0;
+        this.isPlayerExplosion = true;
+        
+        // Make all other elk angry when you hit one of them
+        this.makeAllElkAngry();
+        
+        // Play sound effect (if we had audio)
+        // this.playExplosionSound();
+        
+        // Shake the screen for more dramatic effect
+        this.shakeScreen();
     }
     
     private shakeScreen(intensity: number = 1.0): void {
@@ -2320,5 +2427,41 @@ export class Game {
         this.ctx.beginPath();
         this.ctx.arc(x + width * 0.85, y + height * 0.2, glowRadius, 0, Math.PI * 2);
         this.ctx.fill();
+    }
+    
+    private updateStats(): void {
+        // Update the score and cannon trucks destroyed in the stats panel
+        if (this.scoreElement) {
+            this.scoreElement.textContent = this.score.toString();
+        }
+        
+        if (this.cannonTrucksDestroyedElement) {
+            this.cannonTrucksDestroyedElement.textContent = this.cannonTrucksDestroyed.toString();
+        }
+        
+        // Update Fernie progress bar
+        const fernieProgressFill = document.getElementById('fernie-progress-fill');
+        if (fernieProgressFill) {
+            const progressPercent = Math.min(100, (this.cannonTrucksDestroyed / 25) * 100);
+            fernieProgressFill.style.width = `${progressPercent}%`;
+        }
+        
+        // Update boss health if the boss exists
+        if (this.bossCannonTruckSpawned && !this.bossCannonTruckDestroyed) {
+            if (this.bossHealthContainer) {
+                this.bossHealthContainer.style.display = 'block';
+            }
+            
+            // Find the boss in entities
+            const bossTruck = this.entities.find(e => e instanceof BossCannonTruck) as BossCannonTruck | undefined;
+            
+            if (bossTruck && this.bossHealthElement && this.bossHealthFillElement) {
+                const healthPercent = (bossTruck.getHealth() / 5) * 100;
+                this.bossHealthElement.textContent = `${healthPercent}%`;
+                this.bossHealthFillElement.style.width = `${healthPercent}%`;
+            }
+        } else if (this.bossHealthContainer) {
+            this.bossHealthContainer.style.display = 'none';
+        }
     }
 }

@@ -383,24 +383,36 @@ export class CannonTruck extends GameObject {
 }
 
 export class BossCannonTruck extends CannonTruck {
+    private bossHealth: number = 5; // Boss requires 5 hits
+    
     constructor(x: number, y: number) {
         super(x, y);
-        // Make the boss truck larger
-        this.setSize(180, 120); // Double the original size (90x60)
-        // Set 5 health points
-        this.health = 5;
-        // Make it slower
-        this.velocity = new Vector2D(-80, 0);
-        // Faster firing rate
+        // Make boss truck larger
+        this.setSize(180, 120);
+        // Override object type
+        this.type = ObjectType.CannonTruck;
+        // Slow down boss slightly
+        this.velocity = new Vector2D(-75, 0);
+        // Make boss fire more frequently
         this.fireInterval = 1.0;
     }
     
-    // Override the takeDamage method to show health status
+    // Method to get the current health of the boss
+    getHealth(): number {
+        return this.bossHealth;
+    }
+    
+    // Override hit method to handle health management
+    hit(): boolean {
+        this.bossHealth -= 1;
+        console.log(`Boss cannon truck hit! Health: ${this.bossHealth}`);
+        // Only destroyed when health reaches 0
+        return this.bossHealth <= 0;
+    }
+    
+    // Override takeDamage to call hit() for consistency
     takeDamage(): boolean {
-        this.health--;
-        console.log(`Boss cannon truck hit! Health: ${this.health}`);
-        // Return true if destroyed (health <= 0)
-        return this.health <= 0;
+        return this.hit();
     }
     
     // Override the render method to make the boss truck look more intimidating
@@ -514,7 +526,7 @@ export class BossCannonTruck extends CannonTruck {
         ctx.fillRect(
             this.position.x + this.width * 0.1,
             this.position.y - 20,
-            healthBarWidth * (this.health / 5),
+            healthBarWidth * (this.bossHealth / 5),
             healthBarHeight
         );
         

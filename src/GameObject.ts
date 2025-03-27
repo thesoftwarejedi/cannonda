@@ -52,4 +52,13 @@ export class GameObject {
             this.position.y + this.height > other.position.y
         );
     }
+    
+    /**
+     * Set the dimensions of the game object
+     * Used for responsive resizing
+     */
+    setDimensions(width: number, height: number): void {
+        this.width = width;
+        this.height = height;
+    }
 }
