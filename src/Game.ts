@@ -18,6 +18,8 @@ export class Game {
     private bossHealthElement: HTMLElement | null = null;
     private bossHealthFillElement: HTMLElement | null = null;
     private bossHealthContainer: HTMLElement | null = null;
+    private startGameButton: HTMLElement | null = null;
+    private isMobile: boolean = false;
     private spawnTimer: number = 0;
     private groundLevel: number = 0;
     private ground: Ground | null = null;
@@ -61,17 +63,44 @@ export class Game {
         this.bossHealthElement = document.getElementById('boss-health');
         this.bossHealthFillElement = document.getElementById('boss-health-fill');
         this.bossHealthContainer = document.getElementById('boss-health-container');
+        this.startGameButton = document.getElementById('start-game-button');
         
         // Set up canvas size
         this.resizeCanvas();
+        
+        // Set up window resize event
         window.addEventListener('resize', this.resizeCanvas.bind(this));
         
-        // Set up ground
+        // Create ground
         this.ground = new Ground(0, this.groundLevel, this.canvas.width * 2, 50);
         this.entities.push(this.ground);
         
         // Create player
         this.createPlayer();
+        
+        // Check if mobile
+        this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        // Add click event listener to start button
+        if (this.startGameButton) {
+            this.startGameButton.addEventListener('click', () => {
+                this.gameStarted = true;
+                if (this.startGameButton) {
+                    this.startGameButton.style.display = 'none';
+                }
+                console.log("Game started via button click!");
+            });
+        }
+        
+        // Add touch event listener to start the game on mobile
+        if (this.isMobile) {
+            this.canvas.addEventListener('touchstart', () => {
+                if (!this.gameStarted) {
+                    this.gameStarted = true;
+                    console.log("Game started via touch!");
+                }
+            });
+        }
         
         // Start the game loop
         this.start();
@@ -185,6 +214,12 @@ export class Game {
             if (this.inputManager.isKeyPressed(Keys.Space) || this.inputManager.isKeyPressed(Keys.Enter)) {
                 this.gameStarted = true;
                 console.log("GAME STARTED!");
+            } else if (this.isMobile && this.startGameButton) {
+                if (this.startGameButton.style.display !== 'none') {
+                    this.startGameButton.style.display = 'none';
+                    this.gameStarted = true;
+                    console.log("GAME STARTED!");
+                }
             }
             // Draw start screen
             this.renderStartScreen();
@@ -291,6 +326,14 @@ export class Game {
         this.ctx.fillText('Controls:', this.canvas.width / 2, this.canvas.height * 0.6);
         this.ctx.fillText('Left/Right: Move | Up: Jump/Double-Jump | Down: Shoot', 
                           this.canvas.width / 2, this.canvas.height * 0.65);
+        
+        // Draw start button for mobile users
+        if (this.isMobile && this.startGameButton) {
+            this.startGameButton.style.display = 'block';
+            this.startGameButton.style.top = `${this.canvas.height / 2}px`;
+            this.startGameButton.style.left = `${this.canvas.width / 2}px`;
+            this.startGameButton.style.transform = 'translate(-50%, -50%)';
+        }
     }
     
     private updateCamera(deltaTime: number): void {

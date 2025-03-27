@@ -74,7 +74,7 @@ export class InputManager {
         // Create all buttons
         this.addTouchButton(leftControls, Keys.Left, '←', '60px');
         this.addTouchButton(leftControls, Keys.Right, '→', '60px');
-        this.addTouchButton(rightControls, Keys.Space, 'JUMP', '90px');
+        this.addTouchButton(rightControls, Keys.Up, 'JUMP', '90px');
         this.addTouchButton(rightControls, Keys.Down, 'FIRE', '90px');
         
         // Add controls to container
